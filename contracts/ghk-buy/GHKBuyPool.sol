@@ -32,10 +32,10 @@ contract GHKBuyPool is Initializable, OwnableUpgradeable {
 
     // 最新的 XAU 出售价格，精度为 18 位
     uint256 public latestXAUPrice;
-    // 链下价格和预言机价格的最大偏差比例，1% = 100/10000; 0.5% = 50/10000
-    uint256 public maxOraclePriceDeviation = 50;
-    // 链下价格和最新 XAU 出售价格的最大偏差比例，10% = 1000/10000; 2% = 200/10000
-    uint256 public maxLatestPriceDeviation = 200;
+    // 链下价格和预言机价格的最大偏差比例，1% = 100/10000; 0.8% = 80/10000
+    uint256 public maxOraclePriceDeviation = 80;
+    // 链下价格和最新 XAU 出售价格的最大偏差比例，10% = 1000/10000; 5% = 200/10000
+    uint256 public maxLatestPriceDeviation = 1000;
     // 链下价格的签名地址
     address public signer;
 
@@ -140,8 +140,8 @@ contract GHKBuyPool is Initializable, OwnableUpgradeable {
 
     function _checkOffchainXAUPrice(uint256 offchainXAUPrice) internal view {
         (, int256 price, , , ) = dataFeed.latestRoundData();
-        // uint256 oracleXAUPrice = uint256(price); // bnb testnet
-        uint256 oracleXAUPrice = uint256(price * 1e10); // bnb mainnet
+        uint256 oracleXAUPrice = uint256(price); // bnb testnet
+        // uint256 oracleXAUPrice = uint256(price * 1e10); // bnb mainnet
 
         // 验证链下价格的可靠性
         // 1. 链下价格不能偏离预言机价格超过 'maxOraclePriceDeviation/10000'
