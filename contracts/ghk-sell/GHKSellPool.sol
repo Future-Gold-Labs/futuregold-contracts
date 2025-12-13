@@ -1,12 +1,16 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.20;
+pragma solidity ^0.8.30;
 
+import "hardhat/console.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+
+import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
 
 contract GHKSellPool is Initializable, OwnableUpgradeable {
     using SafeERC20 for IERC20;
@@ -34,40 +38,49 @@ contract GHKSellPool is Initializable, OwnableUpgradeable {
     //金盎司转换克的转换比例，扩大 1e10
     uint256 private OZ_TO_G;
 
+    // 最新的 XAU 出售价格，和 AggregatorV3Interface 预言机返回的价格同样精度为 18 位
+    uint256 public latestXAUPrice;
+    // 链下价格和预言机价格的最大偏差比例，1% = 100/10000; 0.5% = 50/10000
+    uint256 public maxOraclePriceDeviation = 50;
+    // 链下价格和最新 XAU 出售价格的最大偏差比例，10% = 1000/10000; 2% = 200/10000
+    uint256 public maxLatestPriceDeviation = 200;
+    // 链下价格的签名地址
+    address public signer;
+
     //交易代币合约地址
     mapping(address => bool) public tradeTokens;
     //黑名单
     mapping(address => bool) private _blacklist;
 
-    event Buy(
-        address indexed to,
-        uint256 ghkValue,
-        address tradeToken,
-        uint256 price,
-        uint256 usdValue
-    );
-    event BuyOffline(address indexed to, uint256 ghkValue);
+    // event Buy(
+    //     address indexed to,
+    //     uint256 ghkValue,
+    //     address tradeToken,
+    //     uint256 price,
+    //     uint256 usdValue
+    // );
+    // event BuyOffline(address indexed to, uint256 ghkValue);
 
     event Sell(
-        address indexed from,
-        uint256 ghkValue,
-        address tradeToken,
-        uint256 price,
-        uint256 usdValue,
-        uint256 feePercentage
+        address indexed from, // 赎回用户
+        uint256 ghkValue, // 赎回的 GHK 数量
+        address tradeToken, // 赎回目标代币，USDT
+        uint256 price, // 当时的金价，单位 USDT/g，精度 1e10
+        uint256 usdValue, // 赎回得到的 USDT 数量
+        uint256 feePercentage // 线上赎回手续费，精度 1e4
     );
     event SellByAdmin(
-        address indexed from,
-        uint256 ghkValue,
-        address tradeToken,
-        uint256 price,
-        uint256 usdValue,
-        uint256 feePercentage
+        address indexed from, // 赎回用户
+        uint256 ghkValue, // 赎回的 GHK 数量
+        address tradeToken, // 赎回目标代币，USDT
+        uint256 price, // 当时的金价，单位 USDT/g，精度 1e10
+        uint256 usdValue, // 赎回得到的 USDT 数量
+        uint256 feePercentage // 线上赎回手续费，精度 1e4
     );
     event SellOffline(
-        address indexed from,
-        uint256 ghkValue,
-        uint256 feePercentage
+        address indexed from, // 赎回用户
+        uint256 ghkValue, // 赎回的 GHK 数量
+        uint256 feePercentage // 实物黄金赎回手续费，精度 1e4
     );
 
     event AddedToBlacklist(address indexed account);
@@ -92,7 +105,9 @@ contract GHKSellPool is Initializable, OwnableUpgradeable {
     function initialize(
         address _GHK,
         address _USDT,
-        address _XAU_USD
+        address _XAU_USD,
+        uint256 _initialXAUPrice,
+        address _signer
     ) public initializer {
         __Ownable_init(msg.sender);
         GHK = IERC20(_GHK);
@@ -113,21 +128,78 @@ contract GHKSellPool is Initializable, OwnableUpgradeable {
         SELL_GHK_FEE_PERCENTAGE = 100;
         //实物黄金赎回手续费 - 扩大10000倍
         SELL_OFFLINE_GHK_FEE_PERCENTAGE = 200;
+
+        latestXAUPrice = _initialXAUPrice;
+        signer = _signer;
     }
 
     function setDataFeed(address _priceDataFeed) external onlyOwner {
         dataFeed = AggregatorV3Interface(_priceDataFeed);
     }
 
-    function getPrice() public view returns (uint256) {
-        (
-            ,
-            /* uint80 roundID */ int256 price /*uint startedAt*/ /*uint timeStamp*/ /* uint80 answeredInRound */,
-            ,
-            ,
+    function _verifySignature(
+        uint256 offchainXAUPrice,
+        uint256 deadline,
+        bytes calldata sig
+    ) internal view returns (bool) {
+        require(block.timestamp < deadline, "Signature expired");
 
-        ) = dataFeed.latestRoundData();
-        uint256 gPrice = (uint256(price) * 1e10) / OZ_TO_G / 1e8;
+        bytes32 messageHash = keccak256(
+            abi.encodePacked(offchainXAUPrice, deadline, signer)
+        );
+        bytes32 ethSignedMessageHash = MessageHashUtils.toEthSignedMessageHash(
+            messageHash
+        );
+        address recoveredSigner = ECDSA.recover(ethSignedMessageHash, sig);
+
+        return (recoveredSigner == signer);
+    }
+
+    function _checkOffchainXAUPrice(uint256 offchainXAUPrice) internal view {
+        (, int256 price, , , ) = dataFeed.latestRoundData();
+        // uint256 oracleXAUPrice = uint256(price); // bnb testnet
+        uint256 oracleXAUPrice = uint256(price * 1e10); // bnb mainnet
+
+        // 验证链下价格的可靠性
+        // 1. 链下价格不能偏离预言机价格超过 'maxOraclePriceDeviation/10000'
+        // 2. 链下价格不能偏离最新的 XAU 出售价格超过 'maxLatestPriceDeviation/10000'
+
+        require(
+            offchainXAUPrice >= oracleXAUPrice ||
+                offchainXAUPrice >=
+                (oracleXAUPrice * (10000 - maxOraclePriceDeviation)) / 10000,
+            "Offchain price deviates from oracle price too much"
+        );
+
+        require(
+            offchainXAUPrice >= latestXAUPrice ||
+                offchainXAUPrice >=
+                (latestXAUPrice * (10000 - maxLatestPriceDeviation)) / 10000,
+            "Offchain price deviates from latest price too much"
+        );
+
+        console.log(
+            "offchainXAUPrice=%s oracleXAUPrice=%s latestXAUPrice=%s",
+            offchainXAUPrice,
+            oracleXAUPrice,
+            latestXAUPrice
+        );
+    }
+
+    function getPrice(uint256 offchainXAUPrice) public view returns (uint256) {
+        // (
+        //     ,
+        //     /* uint80 roundID */ int256 price /*uint startedAt*/ /*uint timeStamp*/ /* uint80 answeredInRound */,
+        //     ,
+        //     ,
+        //
+        // ) = dataFeed.latestRoundData();
+
+        // 验证链下价格的可靠性
+        _checkOffchainXAUPrice(offchainXAUPrice);
+
+        // uint256 gPrice = (uint256(price) * 1e10) / OZ_TO_G / 1e8;
+        uint256 gPrice = (offchainXAUPrice * 1e10) / OZ_TO_G / 1e8; // OZ_TO_G 有 10 位精度，返回值的精度是 1e18/1e8=1e10
 
         uint256 usdtPrice = getUsdtPrice();
         gPrice = (gPrice * 1e18) / usdtPrice;
@@ -136,13 +208,24 @@ contract GHKSellPool is Initializable, OwnableUpgradeable {
     }
 
     //卖出赎回-线上
-    function sell(uint256 amount, address tradeToken) external {
+    function sell(
+        uint256 amount,
+        address tradeToken,
+        uint256 offchainXAUPrice,
+        uint256 deadline,
+        bytes calldata sig
+    ) external {
         require(!_blacklist[msg.sender], "Blacklist: user is blacklisted");
         require(tradeTokens[tradeToken], "Invalid tradeToken");
         require(amount >= SELL_GHK_AMOUNT_MIN, "amount error");
 
-        //线上赎回
-        uint256 gPrice = getPrice();
+        // 验证签名
+        require(
+            _verifySignature(offchainXAUPrice, deadline, sig),
+            "Invalid signature"
+        );
+        // 获取 XAU 价格
+        uint256 gPrice = getPrice(offchainXAUPrice);
         require(gPrice > 0, "Invalid gold price");
         uint256 usdAmount = (amount * gPrice) / 1e10;
         require(usdAmount > 0, "Invalid usdAmount");
@@ -176,6 +259,9 @@ contract GHKSellPool is Initializable, OwnableUpgradeable {
                 SELL_GHK_FEE_PERCENTAGE
             );
         }
+
+        // 更新最新的 XAU 出售价格
+        latestXAUPrice = offchainXAUPrice;
     }
 
     //线下赎回->合约只销毁
@@ -288,6 +374,26 @@ contract GHKSellPool is Initializable, OwnableUpgradeable {
         emit SellOfflineGHKFeePercentageUpdated(oldValue, _newFeePercentage);
     }
 
+    // 设置最新的 XAU 出售价格，精度为 18 位
+    function setLatestXAUPrice(uint256 price) external onlyOwner {
+        latestXAUPrice = price;
+    }
+
+    // 设置
+    function setMaxOraclePriceDeviation(uint256 deviation) external onlyOwner {
+        maxOraclePriceDeviation = deviation;
+    }
+
+    // 设置链下价格和最新 XAU 出售价格的最大偏差比例，分母是 10000，10% = 1000/10000 就传入 1000，2% = 200/10000 就传入 200
+    function setMaxLatestPriceDeviation(uint256 deviation) external onlyOwner {
+        maxLatestPriceDeviation = deviation;
+    }
+
+    // 设置签名地址
+    function setSigner(address _signer) external onlyOwner {
+        signer = _signer;
+    }
+
     //chainlink预言机 USDT-USD
     AggregatorV3Interface internal dataFeedUSDT_USD;
 
@@ -304,7 +410,7 @@ contract GHKSellPool is Initializable, OwnableUpgradeable {
             ,
 
         ) = dataFeedUSDT_USD.latestRoundData();
-        uint256 usdtPrice = (uint256(price) * 1e10);
+        uint256 usdtPrice = (uint256(price) * 1e10); // 价格预言机返回的是 8 位精度，扩大 1e10 变成 18 位精度
         return usdtPrice;
     }
 
@@ -314,13 +420,13 @@ contract GHKSellPool is Initializable, OwnableUpgradeable {
         USDT = _USDT;
     }
 
-    event TokenSellEvent(
-        address indexed to,
-        uint256 ghkValue,
-        address tradeToken,
-        uint256 gPrice,
-        uint256 usdValue,
-        uint256 tokenPrice,
-        uint256 tokenValue
-    );
+    // event TokenSellEvent(
+    //     address indexed to,
+    //     uint256 ghkValue,
+    //     address tradeToken,
+    //     uint256 gPrice,
+    //     uint256 usdValue,
+    //     uint256 tokenPrice,
+    //     uint256 tokenValue
+    // );
 }

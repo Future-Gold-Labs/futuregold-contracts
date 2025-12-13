@@ -1,12 +1,16 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.20;
+pragma solidity ^0.8.30;
 
+import "hardhat/console.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+
+import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
 
 contract GHKBuyPool is Initializable, OwnableUpgradeable {
     using SafeERC20 for IERC20;
@@ -16,6 +20,8 @@ contract GHKBuyPool is Initializable, OwnableUpgradeable {
 
     //线上购买最小值 - 0.01g
     uint256 public BUY_GHK_AMOUNT_MIN;
+    //线上购买最大值 - 5000g
+    uint256 public BUY_GHK_AMOUNT_MAX;
 
     //GHK合约地址
     IERC20 public GHK;
@@ -23,6 +29,15 @@ contract GHKBuyPool is Initializable, OwnableUpgradeable {
     address public USD_TO_ADDRESS;
     //金盎司转换克的转换比例，扩大 1e10
     uint256 private OZ_TO_G;
+
+    // 最新的 XAU 出售价格，精度为 18 位
+    uint256 public latestXAUPrice;
+    // 链下价格和预言机价格的最大偏差比例，1% = 100/10000; 0.5% = 50/10000
+    uint256 public maxOraclePriceDeviation = 50;
+    // 链下价格和最新 XAU 出售价格的最大偏差比例，10% = 1000/10000; 2% = 200/10000
+    uint256 public maxLatestPriceDeviation = 200;
+    // 链下价格的签名地址
+    address public signer;
 
     //交易代币合约地址
     mapping(address => bool) public tradeTokens;
@@ -42,20 +57,21 @@ contract GHKBuyPool is Initializable, OwnableUpgradeable {
     //GHKE Buy Pool
     address public GHKE_BUY_POOL;
 
-    // ============ 事件 ============
-    event Buy(
-        address indexed to,
-        uint256 ghkValue,
-        address tradeToken,
-        uint256 price,
-        uint256 usdValue
-    );
+    // // ============ 事件 ============
+    // event Buy(
+    //     address indexed to,
+    //     uint256 ghkValue,
+    //     address tradeToken,
+    //     uint256 price,
+    //     uint256 usdValue
+    // );
     event BuyOffline(address indexed to, uint256 ghkValue);
 
     event AddedToBlacklist(address indexed account);
     event RemovedFromBlacklist(address indexed account);
 
     event BuyGHKAmountMinUpdated(uint256 indexed oldVal, uint256 newVal);
+    event BuyGHKAmountMaxUpdated(uint256 indexed oldVal, uint256 newVal);
     event EmergencyWithdraw(address indexed coin, address to, uint256 amount);
     event InviterReward(
         address indexed user,
@@ -77,7 +93,9 @@ contract GHKBuyPool is Initializable, OwnableUpgradeable {
         address _GHKE,
         address _USDT,
         address _USDC,
-        address _XAU_USD
+        address _XAU_USD,
+        uint256 _initialXAUPrice,
+        address _signer
     ) public initializer {
         __Ownable_init(msg.sender);
         GHK = IERC20(_GHK);
@@ -86,33 +104,107 @@ contract GHKBuyPool is Initializable, OwnableUpgradeable {
         tradeTokens[_USDC] = true;
         dataFeed = AggregatorV3Interface(_XAU_USD);
         BUY_GHK_AMOUNT_MIN = 1 * 1e16;
+        BUY_GHK_AMOUNT_MAX = 5000 * 1e18;
         GHK_GHKE_PRICE = 10000 * 1e8;
         INVITER_REWARD_LEVEL_1 = 100;
         INVITER_REWARD_LEVEL_2 = 50;
         OZ_TO_G = 311034768000;
         USD_TO_ADDRESS = msg.sender;
         inviterStatus[msg.sender] = true;
+
+        latestXAUPrice = _initialXAUPrice;
+        signer = _signer;
     }
 
     function setDataFeed(address _priceDataFeed) external onlyOwner {
         dataFeed = AggregatorV3Interface(_priceDataFeed);
     }
 
-    function getPrice() public view returns (uint256) {
-        (
-            ,
-            /* uint80 roundID */ int256 price /*uint startedAt*/ /*uint timeStamp*/ /* uint80 answeredInRound */,
-            ,
-            ,
+    function _verifySignature(
+        uint256 offchainXAUPrice,
+        uint256 deadline,
+        bytes calldata sig
+    ) internal view returns (bool) {
+        require(block.timestamp < deadline, "Signature expired");
 
-        ) = dataFeed.latestRoundData();
-        uint256 gPrice = (uint256(price) * 1e10) / OZ_TO_G / 1e8;
+        bytes32 messageHash = keccak256(
+            abi.encodePacked(offchainXAUPrice, deadline, signer)
+        );
+        bytes32 ethSignedMessageHash = MessageHashUtils.toEthSignedMessageHash(
+            messageHash
+        );
+        address recoveredSigner = ECDSA.recover(ethSignedMessageHash, sig);
+
+        return (recoveredSigner == signer);
+    }
+
+    function _checkOffchainXAUPrice(uint256 offchainXAUPrice) internal view {
+        (, int256 price, , , ) = dataFeed.latestRoundData();
+        // uint256 oracleXAUPrice = uint256(price); // bnb testnet
+        uint256 oracleXAUPrice = uint256(price * 1e10); // bnb mainnet
+
+        // 验证链下价格的可靠性
+        // 1. 链下价格不能偏离预言机价格超过 'maxOraclePriceDeviation/10000'
+        // 2. 链下价格不能偏离最新的 XAU 出售价格超过 'maxLatestPriceDeviation/10000'
+
+        require(
+            offchainXAUPrice >= oracleXAUPrice ||
+                offchainXAUPrice >=
+                (oracleXAUPrice * (10000 - maxOraclePriceDeviation)) / 10000,
+            "Offchain price deviates from oracle price too much"
+        );
+
+        require(
+            offchainXAUPrice >= latestXAUPrice ||
+                offchainXAUPrice >=
+                (latestXAUPrice * (10000 - maxLatestPriceDeviation)) / 10000,
+            "Offchain price deviates from latest price too much"
+        );
+
+        console.log(
+            "offchainXAUPrice=%s oracleXAUPrice=%s latestXAUPrice=%s",
+            offchainXAUPrice,
+            oracleXAUPrice,
+            latestXAUPrice
+        );
+    }
+
+    /// @dev 获取金价，单位 USD/g，精度 10 位
+    /// @param offchainXAUPrice 链下 XAU 价格，单位 USD/oz，精度 18 位
+    /// @return 金价，单位 USD/g，精度 10 位
+    function getPrice(uint256 offchainXAUPrice) public view returns (uint256) {
+        // (
+        //     ,
+        //     /* uint80 roundID */ int256 price /*uint startedAt*/ /*uint timeStamp*/ /* uint80 answeredInRound */,
+        //     ,
+        //     ,
+        //
+        // ) = dataFeed.latestRoundData();
+
+        // 验证链下价格的可靠性
+        _checkOffchainXAUPrice(offchainXAUPrice);
+
+        // uint256 gPrice = (uint256(price) * 1e10) / OZ_TO_G / 1e8;
+        uint256 gPrice = (offchainXAUPrice * 1e10) / OZ_TO_G / 1e8; // OZ_TO_G 有 10 位精度，返回值的精度是 1e18/1e8=1e10
 
         return gPrice;
     }
 
-    //购买-线上
-    function buy(uint256 amount, address tradeToken, address inviter) external {
+    /// 购买-线上
+    /// @param amount 购买的 GHK 数量，精度 18 位
+    /// @param tradeToken 购买使用的交易代币地址，目前只支持 USDT 和 USDC
+    /// @param inviter 邀请人地址，如果没有邀请人则传入 0 地址
+    /// @param offchainXAUPrice 链下 XAU 价格，单位 USD/oz，精度 18 位
+    /// @param deadline 签名过期时间戳
+    /// @param sig 签名
+    function buy(
+        uint256 amount,
+        address tradeToken,
+        address inviter,
+        uint256 offchainXAUPrice,
+        uint256 deadline,
+        bytes calldata sig
+    ) external {
         require(!_blacklist[msg.sender], "Blacklist: user is blacklisted");
         if (inviter != address(0)) {
             require(
@@ -121,22 +213,35 @@ contract GHKBuyPool is Initializable, OwnableUpgradeable {
             ); //有效邀请人
         }
         require(amount >= BUY_GHK_AMOUNT_MIN, "amount less than min");
+        require(amount <= BUY_GHK_AMOUNT_MAX, "amount more than max");
         require(
             amount <= GHK.balanceOf(address(this)),
             "amount exceed balance"
         );
         require(tradeTokens[tradeToken], "Invalid tradeToken");
 
-        uint256 gPrice = getPrice();
+        // 验证签名
+        require(
+            _verifySignature(offchainXAUPrice, deadline, sig),
+            "Invalid signature"
+        );
+        // 获取 XAU 价格
+        uint256 gPrice = getPrice(offchainXAUPrice);
         require(gPrice > 0, "Invalid gold price");
 
-        uint256 usdAmount = (amount * gPrice) / 1e10;
+        uint256 usdAmount = (amount * gPrice) / 1e10; // gPrice 是 10 位精度，所以只需除以 1e10。所以 usdAmount 会和 GHK 的精度一样，都是 18 位精度
         require(usdAmount > 0, "Invalid usdAmount");
+        console.log(
+            "amount=%s, gPrice=%s, usdtAmount:%s",
+            amount,
+            gPrice,
+            usdAmount
+        );
 
         if (tradeToken == USDC) {
             uint256 usdcPrice = getUsdcPrice();
             require(usdcPrice > 0, "Invalid usdc price");
-            uint256 usdcAmount = (usdAmount * 1e18) / usdcPrice;
+            uint256 usdcAmount = (usdAmount * 1e18) / usdcPrice; // 这里取了巧，USDT和USDC都是18位精度，刚好GHK也是18位精度。因为 usdcPrice 是 18 位精度，所以只需除以 1e18
             IERC20(tradeToken).safeTransferFrom(
                 msg.sender,
                 USD_TO_ADDRESS,
@@ -154,7 +259,7 @@ contract GHKBuyPool is Initializable, OwnableUpgradeable {
         } else if (tradeToken == USDT) {
             uint256 usdtPrice = getUsdtPrice();
             require(usdtPrice > 0, "Invalid usdt price");
-            uint256 usdtAmount = (usdAmount * 1e18) / usdtPrice;
+            uint256 usdtAmount = (usdAmount * 1e18) / usdtPrice; // 这里取了巧，USDT和USDC都是18位精度，刚好GHK也是18位精度。因为 usdcPrice 是 18 位精度，所以只需除以 1e18
             IERC20(tradeToken).safeTransferFrom(
                 msg.sender,
                 USD_TO_ADDRESS,
@@ -230,6 +335,10 @@ contract GHKBuyPool is Initializable, OwnableUpgradeable {
         }
 
         inviterStatus[msg.sender] = true;
+
+        // 更新最新的 XAU 出售价格
+        latestXAUPrice = offchainXAUPrice;
+
         emit BuyEvent(
             msg.sender,
             inviter1,
@@ -243,18 +352,28 @@ contract GHKBuyPool is Initializable, OwnableUpgradeable {
     function buyTo(
         address user,
         address coin,
-        uint256 usdtAmount
+        uint256 usdtAmount,
+        uint256 offchainXAUPrice,
+        uint256 deadline,
+        bytes calldata sig
     ) external returns (bool) {
         require(msg.sender == GHKE_BUY_POOL, "permission denied");
         require(!_blacklist[user], "Blacklist: user is blacklisted");
         uint256 usdtPrice = getUsdtPrice();
         uint256 usdAmount = (usdtAmount * 1e18) / usdtPrice;
 
-        uint256 gPrice = getPrice();
+        // 验证签名
+        require(
+            _verifySignature(offchainXAUPrice, deadline, sig),
+            "Invalid signature"
+        );
+        // 获取 XAU 价格
+        uint256 gPrice = getPrice(offchainXAUPrice);
         require(gPrice > 0, "Invalid gold price");
 
         uint256 amount = (usdAmount * 1e10) / gPrice;
         require(amount >= BUY_GHK_AMOUNT_MIN, "amount less than min");
+        require(amount <= BUY_GHK_AMOUNT_MAX, "amount more than max");
         require(
             amount <= GHK.balanceOf(address(this)),
             "amount exceed balance"
@@ -273,6 +392,9 @@ contract GHKBuyPool is Initializable, OwnableUpgradeable {
 
         GHK.safeTransfer(user, amount);
 
+        // 更新最新的 XAU 出售价格
+        latestXAUPrice = offchainXAUPrice;
+
         emit BuyEvent(user, address(0), amount, coin, gPrice, usdAmount);
         return true;
     }
@@ -281,6 +403,7 @@ contract GHKBuyPool is Initializable, OwnableUpgradeable {
     function buyOffline(uint256 amount, address to) external onlyOwner {
         require(!_blacklist[to], "Blacklist: to is blacklisted");
         require(amount >= BUY_GHK_AMOUNT_MIN, "amount less than min");
+        require(amount <= BUY_GHK_AMOUNT_MAX, "amount more than max");
         require(
             amount <= GHK.balanceOf(address(this)),
             "amount exceed balance"
@@ -317,6 +440,17 @@ contract GHKBuyPool is Initializable, OwnableUpgradeable {
         uint256 oldValue = BUY_GHK_AMOUNT_MIN;
         BUY_GHK_AMOUNT_MIN = _newMin;
         emit BuyGHKAmountMinUpdated(oldValue, _newMin);
+    }
+
+    /**
+     * @dev 修改线上购买最大值
+     * @param _newMax 新价格，以 代币精度位
+     */
+    function setBuyGHKAmountMax(uint256 _newMax) external onlyOwner {
+        require(_newMax > 0, "Maximum buy amount must be greater than 0");
+        uint256 oldValue = BUY_GHK_AMOUNT_MAX;
+        BUY_GHK_AMOUNT_MAX = _newMax;
+        emit BuyGHKAmountMaxUpdated(oldValue, _newMax);
     }
 
     /**
@@ -367,6 +501,26 @@ contract GHKBuyPool is Initializable, OwnableUpgradeable {
         GHKE_BUY_POOL = pool;
     }
 
+    // 设置最新的 XAU 出售价格，精度为 18 位
+    function setLatestXAUPrice(uint256 price) external onlyOwner {
+        latestXAUPrice = price;
+    }
+
+    // 设置
+    function setMaxOraclePriceDeviation(uint256 deviation) external onlyOwner {
+        maxOraclePriceDeviation = deviation;
+    }
+
+    // 设置链下价格和最新 XAU 出售价格的最大偏差比例，分母是 10000，10% = 1000/10000 就传入 1000，2% = 200/10000 就传入 200
+    function setMaxLatestPriceDeviation(uint256 deviation) external onlyOwner {
+        maxLatestPriceDeviation = deviation;
+    }
+
+    // 设置签名地址
+    function setSigner(address _signer) external onlyOwner {
+        signer = _signer;
+    }
+
     // 紧急提取
     function emergencyWithdraw(
         address coin,
@@ -382,24 +536,24 @@ contract GHKBuyPool is Initializable, OwnableUpgradeable {
     }
 
     event BuyEvent(
-        address indexed to,
-        address inviter,
-        uint256 ghkValue,
-        address tradeToken,
-        uint256 price,
-        uint256 usdValue
+        address indexed to, // 购买者
+        address inviter, // 邀请人
+        uint256 ghkValue, // 购买的 GHK 数量
+        address tradeToken, // 购买使用的交易代币
+        uint256 price, // 当时的金价，单位：USD/g，精度 1e10
+        uint256 usdValue // 购买的等值 USD 数量，等于 ghkValue*price
     );
 
     event BindInviter(address indexed to, address inviter);
 
     event TokenBuyEvent(
-        address indexed to,
-        uint256 ghkValue,
-        address tradeToken,
-        uint256 gPrice,
-        uint256 usdValue,
-        uint256 tokenPrice,
-        uint256 tokenValue
+        address indexed to, // 购买者
+        uint256 ghkValue, // 购买的 GHK 数量
+        address tradeToken, // 购买使用的交易代币
+        uint256 gPrice, // 当时的金价，单位：USD/g，精度 1e10
+        uint256 usdValue, // 购买的等值 USD 数量，等于 ghkValue*price
+        uint256 tokenPrice, // 购买使用的交易代币的价格
+        uint256 tokenValue // 购买使用的交易代币的数量
     );
 
     //chainlink预言机 USDC-USD
@@ -418,7 +572,7 @@ contract GHKBuyPool is Initializable, OwnableUpgradeable {
             ,
 
         ) = dataFeedUSDC_USD.latestRoundData();
-        uint256 usdcPrice = (uint256(price) * 1e10);
+        uint256 usdcPrice = (uint256(price) * 1e10); // 价格预言机返回的是 8 位精度，扩大 1e10 变成 18 位精度
         return usdcPrice;
     }
 
@@ -444,7 +598,7 @@ contract GHKBuyPool is Initializable, OwnableUpgradeable {
             ,
 
         ) = dataFeedUSDT_USD.latestRoundData();
-        uint256 usdtPrice = (uint256(price) * 1e10);
+        uint256 usdtPrice = (uint256(price) * 1e10); // 价格预言机返回的是 8 位精度，扩大 1e10 变成 18 位精度
         return usdtPrice;
     }
 

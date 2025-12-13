@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.20;
+pragma solidity ^0.8.30;
 
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
@@ -12,15 +12,18 @@ interface IGHKBuyPool {
     function buyTo(
         address user,
         address coin,
-        uint256 usdAmount
+        uint256 usdAmount,
+        uint256 offchainXAUPrice,
+        uint256 deadline,
+        bytes calldata sig
     ) external returns (bool);
 }
 
 contract GHKESwapPool is Initializable, OwnableUpgradeable {
     using SafeERC20 for IERC20;
 
-    //chainlink预言机
-    AggregatorV3Interface internal dataFeed;
+    // //chainlink预言机
+    // AggregatorV3Interface internal dataFeed;
 
     //最小兑换GHKE的数量
     uint256 public SWAP_GHKE_AMOUNT_MIN;
@@ -44,10 +47,10 @@ contract GHKESwapPool is Initializable, OwnableUpgradeable {
 
     // ============ 事件 ============
     event Swap(
-        address indexed user,
-        uint256 amount,
-        uint256 price,
-        uint256 usdAmount
+        address indexed user, // 购买者
+        uint256 amount, // 支付的 GHKE 数量
+        uint256 price, // 当时的 GHKE->USDT 价格
+        uint256 usdAmount // GHKE->USDT->GHK 转换过程中使用的 USDT 数量
     );
     event AddedToBlacklist(address indexed account);
     event RemovedFromBlacklist(address indexed account);
@@ -60,13 +63,13 @@ contract GHKESwapPool is Initializable, OwnableUpgradeable {
     function initialize(
         address _GHKE,
         address _USDT,
-        address _XAU_USD,
+        // address _XAU_USD,
         address _GHK_BUY_POOL_ADDRESS
     ) public initializer {
         __Ownable_init(msg.sender);
         GHKE = IERC20(_GHKE);
         USDT = IERC20(_USDT);
-        dataFeed = AggregatorV3Interface(_XAU_USD);
+        // dataFeed = AggregatorV3Interface(_XAU_USD);
         GHK_BUY_POOL_ADDRESS = _GHK_BUY_POOL_ADDRESS;
         SWAP_GHKE_AMOUNT_MIN = 100 * 1e18;
         GHKE_USDT_PRICE = 2 * 1e17;
@@ -74,37 +77,49 @@ contract GHKESwapPool is Initializable, OwnableUpgradeable {
         OZ_TO_G = 311034768000;
     }
 
-    function setDataFeed(address _priceDataFeed) external onlyOwner {
-        dataFeed = AggregatorV3Interface(_priceDataFeed);
-    }
+    // function setDataFeed(address _priceDataFeed) external onlyOwner {
+    //     dataFeed = AggregatorV3Interface(_priceDataFeed);
+    // }
 
-    function getPrice() public view returns (uint256) {
-        (
-            ,
-            /* uint80 roundID */ int256 price /*uint startedAt*/ /*uint timeStamp*/ /* uint80 answeredInRound */,
-            ,
-            ,
-
-        ) = dataFeed.latestRoundData();
-        uint256 gPrice = (uint256(price) * 1e10) / OZ_TO_G / 1e8;
+    /// @dev 获取以 USDT 计价的金价，精度是 1e10
+    /// @param offchainXAUPrice 链下 XAU 价格，单位 USD/oz，精度 18 位
+    /// @return 以 USDT 计价的金价，单位 USDT/g，精度 10 位
+    function getPrice(uint256 offchainXAUPrice) public view returns (uint256) {
+        // (
+        //     ,
+        //     /* uint80 roundID */ int256 price /*uint startedAt*/ /*uint timeStamp*/ /* uint80 answeredInRound */,
+        //     ,
+        //     ,
+        //
+        // ) = dataFeed.latestRoundData();
+        // uint256 gPrice = (uint256(price) * 1e10) / OZ_TO_G / 1e8;
+        uint256 gPrice = (offchainXAUPrice * 1e10) / OZ_TO_G / 1e8; // OZ_TO_G 有 10 位精度，返回值的精度是 1e18/1e8=1e10
         uint256 usdtPrice = getUsdtPrice();
-        gPrice = (gPrice * 1e18) / usdtPrice;
+        gPrice = (gPrice * 1e18) / usdtPrice; // 转换成以 USDT 计价的价格。usdtPrice 是 18 位精度，所以返回值是 gPrice 的精度，即 10 位精度
         return gPrice;
     }
 
-    function getAmountOut(uint256 amountIn) public view returns (uint256) {
+    function getAmountOut(
+        uint256 amountIn,
+        uint256 offchainXAUPrice
+    ) public view returns (uint256) {
         uint256 usdtAmount = (amountIn * GHKE_USDT_PRICE) / 1e18;
 
         uint256 usdtPrice = getUsdtPrice();
         uint256 usdAmount = (usdtAmount * 1e18) / usdtPrice;
 
-        uint256 gPrice = getPrice();
+        uint256 gPrice = getPrice(offchainXAUPrice);
         uint256 ghkAmount = (usdAmount * 1e10) / gPrice;
         return ghkAmount;
     }
 
     //GHKE->USDT->GHK
-    function swap(uint256 amount) external {
+    function swap(
+        uint256 amount,
+        uint256 offchainXAUPrice,
+        uint256 deadline,
+        bytes calldata sig
+    ) external {
         require(!stop, "stopped");
         require(!_blacklist[msg.sender], "Blacklist: user is blacklisted");
         require(amount >= SWAP_GHKE_AMOUNT_MIN, "amount less than min");
@@ -121,7 +136,10 @@ contract GHKESwapPool is Initializable, OwnableUpgradeable {
         IGHKBuyPool(GHK_BUY_POOL_ADDRESS).buyTo(
             msg.sender,
             address(USDT),
-            usdAmount
+            usdAmount,
+            offchainXAUPrice,
+            deadline,
+            sig
         );
         emit Swap(msg.sender, amount, GHKE_USDT_PRICE, usdAmount);
     }
@@ -202,7 +220,7 @@ contract GHKESwapPool is Initializable, OwnableUpgradeable {
             ,
 
         ) = dataFeedUSDT_USD.latestRoundData();
-        uint256 usdtPrice = (uint256(price) * 1e10);
+        uint256 usdtPrice = (uint256(price) * 1e10); // 价格预言机返回的是 8 位精度，扩大 1e10 变成 18 位精度
         return usdtPrice;
     }
 }
