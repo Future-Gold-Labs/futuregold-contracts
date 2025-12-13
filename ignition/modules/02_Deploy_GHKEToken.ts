@@ -9,7 +9,8 @@ export default buildModule("GHKEToken", (m) => {
   const proxy = m.contract("TransparentUpgradeableProxy", [
     ghkeToken,
     owner,
-    "0x",
+    // function initialize() public initializer {}
+    m.encodeFunctionCall(ghkeToken, "initialize"),
   ]);
 
   const proxyAdminAddress = m.readEventArgument(
