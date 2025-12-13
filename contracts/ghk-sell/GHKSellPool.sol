@@ -128,7 +128,7 @@ contract GHKSellPool is Initializable, OwnableUpgradeable {
 
         ) = dataFeed.latestRoundData();
         uint256 gPrice = (uint256(price) * 1e10) / OZ_TO_G / 1e8;
-        
+
         uint256 usdtPrice = getUsdtPrice();
         gPrice = (gPrice * 1e18) / usdtPrice;
 
@@ -309,6 +309,7 @@ contract GHKSellPool is Initializable, OwnableUpgradeable {
     }
 
     address public USDT;
+
     function setUSDT(address _USDT) external onlyOwner {
         USDT = _USDT;
     }

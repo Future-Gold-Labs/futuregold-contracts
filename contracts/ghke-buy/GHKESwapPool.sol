@@ -7,8 +7,13 @@ import "@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.so
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+
 interface IGHKBuyPool {
-    function buyTo(address user,address coin,uint256 usdAmount) external returns(bool);
+    function buyTo(
+        address user,
+        address coin,
+        uint256 usdAmount
+    ) external returns (bool);
 }
 
 contract GHKESwapPool is Initializable, OwnableUpgradeable {
@@ -38,14 +43,19 @@ contract GHKESwapPool is Initializable, OwnableUpgradeable {
     mapping(address => bool) private _blacklist;
 
     // ============ 事件 ============
-    event Swap(address indexed user,uint256 amount,uint256 price,uint256 usdAmount);
+    event Swap(
+        address indexed user,
+        uint256 amount,
+        uint256 price,
+        uint256 usdAmount
+    );
     event AddedToBlacklist(address indexed account);
     event RemovedFromBlacklist(address indexed account);
-    event SwapGHKEAmountMinUpdated(uint256 indexed oldValue,uint256 newValue);
-    event GHKE_USDT_PriceUpdated(uint256 indexed oldValue,uint256 newValue);
+    event SwapGHKEAmountMinUpdated(uint256 indexed oldValue, uint256 newValue);
+    event GHKE_USDT_PriceUpdated(uint256 indexed oldValue, uint256 newValue);
     event StopStatusChanged(bool indexed stop);
 
-    event EmergencyWithdraw(address indexed coin, address to,uint256 amount);
+    event EmergencyWithdraw(address indexed coin, address to, uint256 amount);
 
     function initialize(
         address _GHKE,
@@ -82,33 +92,37 @@ contract GHKESwapPool is Initializable, OwnableUpgradeable {
         return gPrice;
     }
 
-     function getAmountOut(uint256 amountIn) public view returns (uint256) {
-        uint256 usdtAmount = amountIn * GHKE_USDT_PRICE /  1e18;
-        
+    function getAmountOut(uint256 amountIn) public view returns (uint256) {
+        uint256 usdtAmount = (amountIn * GHKE_USDT_PRICE) / 1e18;
+
         uint256 usdtPrice = getUsdtPrice();
-         uint256 usdAmount = (usdtAmount * 1e18) / usdtPrice;
+        uint256 usdAmount = (usdtAmount * 1e18) / usdtPrice;
 
         uint256 gPrice = getPrice();
-        uint256 ghkAmount = usdAmount *1e10 / gPrice;
+        uint256 ghkAmount = (usdAmount * 1e10) / gPrice;
         return ghkAmount;
-     }
+    }
 
     //GHKE->USDT->GHK
     function swap(uint256 amount) external {
-        require(!stop,"stopped");
+        require(!stop, "stopped");
         require(!_blacklist[msg.sender], "Blacklist: user is blacklisted");
         require(amount >= SWAP_GHKE_AMOUNT_MIN, "amount less than min");
 
-        uint256 usdAmount = amount * GHKE_USDT_PRICE /  1e18;
+        uint256 usdAmount = (amount * GHKE_USDT_PRICE) / 1e18;
 
-       GHKE.safeTransferFrom(
+        GHKE.safeTransferFrom(
             msg.sender,
             0x000000000000000000000000000000000000dEaD,
             amount
-       );
+        );
 
         USDT.approve(GHK_BUY_POOL_ADDRESS, usdAmount);
-        IGHKBuyPool(GHK_BUY_POOL_ADDRESS).buyTo(msg.sender, address(USDT), usdAmount);
+        IGHKBuyPool(GHK_BUY_POOL_ADDRESS).buyTo(
+            msg.sender,
+            address(USDT),
+            usdAmount
+        );
         emit Swap(msg.sender, amount, GHKE_USDT_PRICE, usdAmount);
     }
 
@@ -140,16 +154,16 @@ contract GHKESwapPool is Initializable, OwnableUpgradeable {
         SWAP_GHKE_AMOUNT_MIN = _newMin;
         emit SwapGHKEAmountMinUpdated(oldValue, _newMin);
     }
-    
-      /**
+
+    /**
      * @dev GHKE->USDT的价格 扩大1e18  1u/GHKE =  1GHKE=1e18 USDT
      * @param newPrice 新价格，以 1e18 为精度单位
      */
     function setGHKE_USDT_Price(uint256 newPrice) external onlyOwner {
         require(newPrice > 0, "Price must be greater than 0");
-        uint256 oldValue =  GHKE_USDT_PRICE;
+        uint256 oldValue = GHKE_USDT_PRICE;
         GHKE_USDT_PRICE = newPrice;
-        emit GHKE_USDT_PriceUpdated(oldValue,newPrice);
+        emit GHKE_USDT_PriceUpdated(oldValue, newPrice);
     }
 
     //暂停
@@ -157,14 +171,20 @@ contract GHKESwapPool is Initializable, OwnableUpgradeable {
         stop = isStop;
         emit StopStatusChanged(stop);
     }
-    
-     // 紧急提取
-    function emergencyWithdraw(address coin,address to,uint256 amount) external onlyOwner {
-        require(IERC20(coin).balanceOf(address(this))>=amount,"amount error");
-        IERC20(coin).safeTransfer(to,amount);
-        emit EmergencyWithdraw(coin, to,amount);
-    }
 
+    // 紧急提取
+    function emergencyWithdraw(
+        address coin,
+        address to,
+        uint256 amount
+    ) external onlyOwner {
+        require(
+            IERC20(coin).balanceOf(address(this)) >= amount,
+            "amount error"
+        );
+        IERC20(coin).safeTransfer(to, amount);
+        emit EmergencyWithdraw(coin, to, amount);
+    }
 
     //chainlink预言机 USDT-USD
     AggregatorV3Interface internal dataFeedUSDT_USD;
@@ -185,5 +205,4 @@ contract GHKESwapPool is Initializable, OwnableUpgradeable {
         uint256 usdtPrice = (uint256(price) * 1e10);
         return usdtPrice;
     }
-
 }

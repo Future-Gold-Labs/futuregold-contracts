@@ -114,8 +114,8 @@ contract GHKMiningPool is Initializable, OwnableUpgradeable {
         updateCumulativeRewardRate();
 
         // 计算单个记录的奖励
-        uint256 reward = stakeRecord.amount *
-            (cumulativeRewardRate - stakeRecord.userRewardRate)/1e18;
+        uint256 reward = (stakeRecord.amount *
+            (cumulativeRewardRate - stakeRecord.userRewardRate)) / 1e18;
         require(reward > 0, "No reward to claim");
 
         // 转移 $GHKE 代币
@@ -138,8 +138,8 @@ contract GHKMiningPool is Initializable, OwnableUpgradeable {
 
         if (block.timestamp >= stakeRecord.unlockTime) {
             // 计算奖励
-            uint256 reward = stakeRecord.amount *
-                (cumulativeRewardRate - stakeRecord.userRewardRate)/1e18;
+            uint256 reward = (stakeRecord.amount *
+                (cumulativeRewardRate - stakeRecord.userRewardRate)) / 1e18;
 
             if (reward > 0) {
                 ghkeToken.safeTransfer(msg.sender, reward);
@@ -172,8 +172,8 @@ contract GHKMiningPool is Initializable, OwnableUpgradeable {
                 1 days;
         }
 
-        uint256 reward = stakeRecord.amount *
-            (tempCumulativeRewardRate - stakeRecord.userRewardRate)/1e18;
+        uint256 reward = (stakeRecord.amount *
+            (tempCumulativeRewardRate - stakeRecord.userRewardRate)) / 1e18;
         return reward;
     }
 
@@ -190,6 +190,7 @@ contract GHKMiningPool is Initializable, OwnableUpgradeable {
         MIN_STAKE_GHK_AMOUNT = _newVal;
         emit MinStakeGhkAmountUpdated(oldValue, _newVal);
     }
+
     //锁定周期（90 天）
     function setLockPeriod(uint256 _newVal) external onlyOwner {
         uint256 oldValue = LOCK_PERIOD;
@@ -221,7 +222,7 @@ contract GHKMiningPool is Initializable, OwnableUpgradeable {
         uint256 endIndex = startIndex + 10 > totalCount
             ? totalCount - startIndex
             : 10;
-            
+
         amounts = new uint256[](endIndex);
         startTimes = new uint256[](endIndex);
         unlockTimes = new uint256[](endIndex);
@@ -240,15 +241,15 @@ contract GHKMiningPool is Initializable, OwnableUpgradeable {
             uint256 stakeIndex = totalCount - 1 - (startIndex + i); // 倒序索引
             ids[i] = stakeIndex;
             amounts[i] = stakes[user][stakeIndex].amount;
-            startTimes[i ] = stakes[user][stakeIndex].startTime;
-            unlockTimes[i ] = stakes[user][stakeIndex].unlockTime;
+            startTimes[i] = stakes[user][stakeIndex].startTime;
+            unlockTimes[i] = stakes[user][stakeIndex].unlockTime;
             rewards[i] =
-                stakes[user][stakeIndex].amount *
-                (tempCumulativeRewardRate - stakes[user][stakeIndex].userRewardRate) / 1e18;
+                (stakes[user][stakeIndex].amount *
+                    (tempCumulativeRewardRate -
+                        stakes[user][stakeIndex].userRewardRate)) /
+                1e18;
         }
 
         return (ids, amounts, startTimes, unlockTimes, rewards);
     }
-
-    
 }

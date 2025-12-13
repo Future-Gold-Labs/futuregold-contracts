@@ -109,7 +109,6 @@ contract GHKBuyPool is Initializable, OwnableUpgradeable {
         uint256 gPrice = (uint256(price) * 1e10) / OZ_TO_G / 1e8;
 
         return gPrice;
-
     }
 
     //购买-线上
@@ -261,11 +260,7 @@ contract GHKBuyPool is Initializable, OwnableUpgradeable {
             "amount exceed balance"
         );
 
-        IERC20(coin).safeTransferFrom(
-            msg.sender,
-            USD_TO_ADDRESS,
-            usdtAmount
-        );
+        IERC20(coin).safeTransferFrom(msg.sender, USD_TO_ADDRESS, usdtAmount);
         emit TokenBuyEvent(
             msg.sender,
             amount,
@@ -312,6 +307,7 @@ contract GHKBuyPool is Initializable, OwnableUpgradeable {
     function isBlacklisted(address account) public view returns (bool) {
         return _blacklist[account];
     }
+
     /**
      * @dev 修改线上购买最小值
      * @param _newMin 新价格，以 代币精度位
@@ -322,6 +318,7 @@ contract GHKBuyPool is Initializable, OwnableUpgradeable {
         BUY_GHK_AMOUNT_MIN = _newMin;
         emit BuyGHKAmountMinUpdated(oldValue, _newMin);
     }
+
     /**
      * @dev 设置交易代币是否允许交易
      * @param tokenAddress 代币地址
@@ -426,6 +423,7 @@ contract GHKBuyPool is Initializable, OwnableUpgradeable {
     }
 
     address public USDC;
+
     function setUSDC(address _USDC) external onlyOwner {
         USDC = _USDC;
     }
@@ -451,6 +449,7 @@ contract GHKBuyPool is Initializable, OwnableUpgradeable {
     }
 
     address public USDT;
+
     function setUSDT(address _USDT) external onlyOwner {
         USDT = _USDT;
     }

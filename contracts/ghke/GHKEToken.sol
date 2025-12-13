@@ -6,12 +6,11 @@ import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
 contract GHKEToken is Initializable, ERC20Upgradeable, OwnableUpgradeable {
-
     mapping(address => bool) private _blacklist;
 
     event AddedToBlacklist(address indexed account);
     event RemovedFromBlacklist(address indexed account);
-    
+
     function initialize() public initializer {
         __ERC20_init("GoldHKE", "GHKE");
         __Ownable_init(msg.sender);
@@ -37,11 +36,13 @@ contract GHKEToken is Initializable, ERC20Upgradeable, OwnableUpgradeable {
         return _blacklist[account];
     }
 
-    function _update(address from, address to, uint256 amount) internal override {
+    function _update(
+        address from,
+        address to,
+        uint256 amount
+    ) internal override {
         require(!_blacklist[from], "BlacklistToken: Sender is blacklisted");
         require(!_blacklist[to], "BlacklistToken: Recipient is blacklisted");
         super._update(from, to, amount);
     }
-
-
 }

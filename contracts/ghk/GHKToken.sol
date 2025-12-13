@@ -6,7 +6,6 @@ import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
 contract GHKToken is Initializable, ERC20Upgradeable, OwnableUpgradeable {
-
     mapping(address => bool) private _blacklist;
     mapping(address => bool) private minters;
 
@@ -15,7 +14,7 @@ contract GHKToken is Initializable, ERC20Upgradeable, OwnableUpgradeable {
 
     event AddedToMinters(address indexed account);
     event RemovedFromMinters(address indexed account);
-    
+
     function initialize(uint256 initialSupply) public initializer {
         __ERC20_init("GoldHK", "GHK");
         __Ownable_init(msg.sender);
@@ -34,7 +33,10 @@ contract GHKToken is Initializable, ERC20Upgradeable, OwnableUpgradeable {
     }
 
     function burn(uint256 amount) external {
-        require(!_blacklist[msg.sender], "BlacklistToken: Burner is blacklisted");
+        require(
+            !_blacklist[msg.sender],
+            "BlacklistToken: Burner is blacklisted"
+        );
         _burn(msg.sender, amount);
     }
 
@@ -74,12 +76,15 @@ contract GHKToken is Initializable, ERC20Upgradeable, OwnableUpgradeable {
         return _blacklist[account];
     }
 
-    function _update(address from, address to, uint256 amount) internal override {
+    function _update(
+        address from,
+        address to,
+        uint256 amount
+    ) internal override {
         require(!_blacklist[from], "BlacklistToken: Sender is blacklisted");
         require(!_blacklist[to], "BlacklistToken: Recipient is blacklisted");
         super._update(from, to, amount);
     }
 
     // CAN ADD MORE FUNCTIONS HERE IN THE FUTURE
-
 }
