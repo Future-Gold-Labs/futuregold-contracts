@@ -1,11 +1,17 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.20;
+pragma solidity ^0.8.30;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
-contract GHKToken is Initializable, ERC20Upgradeable, OwnableUpgradeable {
+contract GHKToken is
+    Initializable,
+    ERC20Upgradeable,
+    ERC20PausableUpgradeable,
+    OwnableUpgradeable
+{
     mapping(address => bool) private _blacklist;
     mapping(address => bool) private minters;
 
@@ -17,6 +23,7 @@ contract GHKToken is Initializable, ERC20Upgradeable, OwnableUpgradeable {
 
     function initialize(uint256 initialSupply) public initializer {
         __ERC20_init("GoldHK", "GHK");
+        __ERC20Pausable_init();
         __Ownable_init(msg.sender);
 
         _mint(msg.sender, initialSupply * (10 ** decimals()));
@@ -80,10 +87,18 @@ contract GHKToken is Initializable, ERC20Upgradeable, OwnableUpgradeable {
         address from,
         address to,
         uint256 amount
-    ) internal override {
+    ) internal override(ERC20Upgradeable, ERC20PausableUpgradeable) {
         require(!_blacklist[from], "BlacklistToken: Sender is blacklisted");
         require(!_blacklist[to], "BlacklistToken: Recipient is blacklisted");
         super._update(from, to, amount);
+    }
+
+    function pause() public onlyOwner {
+        _pause();
+    }
+
+    function unpause() public onlyOwner {
+        _unpause();
     }
 
     // CAN ADD MORE FUNCTIONS HERE IN THE FUTURE
