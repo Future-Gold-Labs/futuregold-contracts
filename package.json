@@ -11,6 +11,7 @@
     "@types/node": "^22.19.2",
     "forge-std": "foundry-rs/forge-std#v1.9.4",
     "hardhat": "^3.1.0",
+    "hardhat-reown": "^0.0.7",
     "typescript": "~5.8.3",
     "viem": "^2.41.2"
   }
