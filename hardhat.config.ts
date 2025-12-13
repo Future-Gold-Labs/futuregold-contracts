@@ -1,9 +1,10 @@
 import hardhatToolboxViemPlugin from "@nomicfoundation/hardhat-toolbox-viem";
 import { configVariable, defineConfig } from "hardhat/config";
 import hardhatReownPlugin from "hardhat-reown";
+import hardhatVerify from "@nomicfoundation/hardhat-verify";
 
 export default defineConfig({
-  plugins: [hardhatToolboxViemPlugin, hardhatReownPlugin],
+  plugins: [hardhatToolboxViemPlugin, hardhatReownPlugin, hardhatVerify],
   ignition: {
     requiredConfirmations: 1, // 一个确认就够了
   },
@@ -49,6 +50,17 @@ export default defineConfig({
       // ignition: {
       //   gasPrice: 900984013107n,
       // },
+    },
+  },
+  verify: {
+    etherscan: {
+      apiKey: "1W6UNEYEZ4217QQE8JVR6M95ZRGC9STYA4",
+    },
+    blockscout: {
+      enabled: false,
+    },
+    sourcify: {
+      enabled: false,
     },
   },
 });

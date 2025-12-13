@@ -121,6 +121,7 @@ contract GHKBuyPool is Initializable, OwnableUpgradeable {
     }
 
     function _verifySignature(
+        address user_wallet,
         uint256 offchainXAUPrice,
         uint256 deadline,
         bytes calldata sig
@@ -128,7 +129,7 @@ contract GHKBuyPool is Initializable, OwnableUpgradeable {
         require(block.timestamp < deadline, "Signature expired");
 
         bytes32 messageHash = keccak256(
-            abi.encodePacked(offchainXAUPrice, deadline, signer)
+            abi.encodePacked(offchainXAUPrice, deadline, user_wallet)
         );
         bytes32 ethSignedMessageHash = MessageHashUtils.toEthSignedMessageHash(
             messageHash
@@ -222,7 +223,7 @@ contract GHKBuyPool is Initializable, OwnableUpgradeable {
 
         // 验证签名
         require(
-            _verifySignature(offchainXAUPrice, deadline, sig),
+            _verifySignature(msg.sender, offchainXAUPrice, deadline, sig),
             "Invalid signature"
         );
         // 获取 XAU 价格
@@ -364,7 +365,7 @@ contract GHKBuyPool is Initializable, OwnableUpgradeable {
 
         // 验证签名
         require(
-            _verifySignature(offchainXAUPrice, deadline, sig),
+            _verifySignature(msg.sender, offchainXAUPrice, deadline, sig),
             "Invalid signature"
         );
         // 获取 XAU 价格

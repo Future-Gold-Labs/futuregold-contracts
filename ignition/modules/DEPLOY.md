@@ -10,6 +10,8 @@
 
 `bunx hardhat ignition deploy ignition/modules/03_Deploy_GHKBuyPool.ts --build-profile default --network bnbTestnet --parameters ignition/parameters.bnb.testnet.json`
 
+`bunx hardhat ignition deploy ignition/modules/04_Deploy_GHKSellPool.ts --build-profile default --network bnbTestnet --parameters ignition/parameters.bnb.testnet.json`
+
 ## 2. 升级
 
 `bunx hardhat ignition deploy ignition/modules/13_Upgrade_GHKBuyPool.ts --build-profile default --network bnbTestnet --parameters ignition/parameters.bnb.testnet.json`

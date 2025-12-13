@@ -1,5 +1,5 @@
 {
-  "GHKBuyPool": {
+  "$global": {
     "USDT": "0x0865C7b37e720CacaE044FC609691EFbaF241d1F",
     "USDT_comments": "<用自己部署的>",
     "USDC": "0x734a99c28d8DE9fc4Bcfb3f624c2b9311DDF5A03",
