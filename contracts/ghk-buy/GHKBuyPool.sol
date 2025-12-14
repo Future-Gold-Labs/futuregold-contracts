@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import "hardhat/console.sol";
+// import "hardhat/console.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
@@ -166,12 +166,12 @@ contract GHKBuyPool is Initializable, OwnableUpgradeable {
             "Offchain price deviates from latest price too much"
         );
 
-        console.log(
-            "offchainXAUPrice=%s oracleXAUPrice=%s latestXAUPrice=%s",
-            offchainXAUPrice,
-            oracleXAUPrice,
-            latestXAUPrice
-        );
+        // console.log(
+        //     "offchainXAUPrice=%s oracleXAUPrice=%s latestXAUPrice=%s",
+        //     offchainXAUPrice,
+        //     oracleXAUPrice,
+        //     latestXAUPrice
+        // );
     }
 
     /// @dev 获取金价，单位 USD/g，精度 10 位
@@ -236,12 +236,12 @@ contract GHKBuyPool is Initializable, OwnableUpgradeable {
 
         uint256 usdAmount = (amount * gPrice) / 1e10; // gPrice 是 10 位精度，所以只需除以 1e10。所以 usdAmount 会和 GHK 的精度一样，都是 18 位精度
         require(usdAmount > 0, "Invalid usdAmount");
-        console.log(
-            "amount=%s, gPrice=%s, usdtAmount:%s",
-            amount,
-            gPrice,
-            usdAmount
-        );
+        // console.log(
+        //     "amount=%s, gPrice=%s, usdtAmount:%s",
+        //     amount,
+        //     gPrice,
+        //     usdAmount
+        // );
 
         if (tradeToken == USDC) {
             uint256 usdcPrice = getUsdcPrice();
@@ -369,7 +369,7 @@ contract GHKBuyPool is Initializable, OwnableUpgradeable {
 
         // 验证签名
         require(
-            _verifySignature(msg.sender, offchainXAUPrice, deadline, sig),
+            _verifySignature(user, offchainXAUPrice, deadline, sig),
             "Invalid signature"
         );
         // 获取 XAU 价格
