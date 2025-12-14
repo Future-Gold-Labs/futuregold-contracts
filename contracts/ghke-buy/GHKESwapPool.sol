@@ -64,12 +64,14 @@ contract GHKESwapPool is Initializable, OwnableUpgradeable {
         address _GHKE,
         address _USDT,
         // address _XAU_USD,
+        address _dataFeedUSDT,
         address _GHK_BUY_POOL_ADDRESS
     ) public initializer {
         __Ownable_init(msg.sender);
         GHKE = IERC20(_GHKE);
         USDT = IERC20(_USDT);
         // dataFeed = AggregatorV3Interface(_XAU_USD);
+        dataFeedUSDT_USD = AggregatorV3Interface(_dataFeedUSDT);
         GHK_BUY_POOL_ADDRESS = _GHK_BUY_POOL_ADDRESS;
         SWAP_GHKE_AMOUNT_MIN = 100 * 1e18;
         GHKE_USDT_PRICE = 2 * 1e17;
