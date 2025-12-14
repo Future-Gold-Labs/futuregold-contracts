@@ -13,11 +13,14 @@ export default buildModule("GHKSellPool", (m) => {
   const proxy = m.contract("TransparentUpgradeableProxy", [
     ghkSellPool,
     owner,
-    // function initialize(address _GHK, address _USDT, address _XAU_USD, uint256 _initialXAUPrice, address _signer) public initializer {}
+    // function initialize(address _GHK, address _USDT, address _dataFeedXAU,
+    //  address _dataFeedUSDT, uint256 _initialXAUPrice,
+    //  address _signer) public initializer {}
     m.encodeFunctionCall(ghkSellPool, "initialize", [
       ghkToken,
       m.getParameter("USDT"),
       m.getParameter("DATA_FEED_XAU"),
+      m.getParameter("DATA_FEED_USDT"),
       m.getParameter("INITIAL_XAU_PRICE"),
       m.getParameter("SIGNER"),
     ]),

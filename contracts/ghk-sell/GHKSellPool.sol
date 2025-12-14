@@ -415,11 +415,11 @@ contract GHKSellPool is Initializable, OwnableUpgradeable {
         return usdtPrice;
     }
 
-    address public USDT;
-
-    function setUSDT(address _USDT) external onlyOwner {
-        USDT = _USDT;
-    }
+    // address public USDT;
+    //
+    // function setUSDT(address _USDT) external onlyOwner {
+    //     USDT = _USDT;
+    // }
 
     // event TokenSellEvent(
     //     address indexed to,

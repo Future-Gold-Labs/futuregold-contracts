@@ -16,7 +16,8 @@ export default buildModule("GHKBuyPool", (m) => {
     ghkBuyPool,
     owner,
     // function initialize(address _GHK, address _GHKE, address _USDT, address _USDC,
-    //  address _dataFeedXAU, address _dataFeedUSDT, address _dataFeedUSDC, uint256 _initialXAUPrice, address _signer ) public initializer {}
+    //  address _dataFeedXAU, address _dataFeedUSDT, address _dataFeedUSDC,
+    //  uint256 _initialXAUPrice, address _signer) public initializer {}
     m.encodeFunctionCall(ghkBuyPool, "initialize", [
       ghkToken,
       ghkeToken,
