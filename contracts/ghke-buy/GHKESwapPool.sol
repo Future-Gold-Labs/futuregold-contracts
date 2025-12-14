@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
+// import "hardhat/console.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
@@ -105,13 +106,15 @@ contract GHKESwapPool is Initializable, OwnableUpgradeable {
         uint256 amountIn,
         uint256 offchainXAUPrice
     ) public view returns (uint256) {
-        uint256 usdtAmount = (amountIn * GHKE_USDT_PRICE) / 1e18;
+        // 1/2 GHKE->USDT
+        uint256 usdtAmount = (amountIn * GHKE_USDT_PRICE) / 1e18; // 这里取了巧，USDT和USDC都是18位精度，刚好GHK也是18位精度。因为 usdcPrice 是 18 位精度，所以只需除以 1e18
 
         uint256 usdtPrice = getUsdtPrice();
         uint256 usdAmount = (usdtAmount * 1e18) / usdtPrice;
 
         uint256 gPrice = getPrice(offchainXAUPrice);
-        uint256 ghkAmount = (usdAmount * 1e10) / gPrice;
+        // 2/2 USDT->GHK
+        uint256 ghkAmount = (usdAmount * 1e10) / gPrice; // 这里取了巧，USDT和USDC都是18位精度，刚好GHK也是18位精度。因为 usdcPrice 是 18 位精度，所以只需除以 1e18
         return ghkAmount;
     }
 
@@ -127,6 +130,18 @@ contract GHKESwapPool is Initializable, OwnableUpgradeable {
         require(amount >= SWAP_GHKE_AMOUNT_MIN, "amount less than min");
 
         uint256 usdAmount = (amount * GHKE_USDT_PRICE) / 1e18;
+
+        // console.log(
+        //     "GHKE->USDT->GHK swap called: amount=%s, usdAmount=%s",
+        //     amount,
+        //     usdAmount
+        // );
+        // console.log(
+        //     "msg.sender=%s, this=%s, allowance=%s",
+        //     msg.sender,
+        //     address(this),
+        //     GHKE.allowance(msg.sender, address(this))
+        // );
 
         GHKE.safeTransferFrom(
             msg.sender,
