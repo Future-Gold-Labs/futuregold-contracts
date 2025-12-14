@@ -32,10 +32,10 @@ contract GHKBuyPool is Initializable, OwnableUpgradeable {
 
     // 最新的 XAU 出售价格，精度为 18 位
     uint256 public latestXAUPrice;
-    // 链下价格和预言机价格的最大偏差比例，1% = 100/10000; 0.8% = 80/10000
-    uint256 public maxOraclePriceDeviation = 80;
-    // 链下价格和最新 XAU 出售价格的最大偏差比例，10% = 1000/10000; 5% = 200/10000
-    uint256 public maxLatestPriceDeviation = 1000;
+    // 链下价格和预言机价格的最大偏差比例，精度为 4 位，例如：1% = 100/10000; 0.8% = 80/10000
+    uint256 public maxOraclePriceDeviation;
+    // 链下价格和最新 XAU 出售价格的最大偏差比例，精度为 4 位，例如：10% = 1000/10000; 5% = 200/10000
+    uint256 public maxLatestPriceDeviation;
     // 链下价格的签名地址
     address public signer;
 
@@ -113,6 +113,10 @@ contract GHKBuyPool is Initializable, OwnableUpgradeable {
         inviterStatus[msg.sender] = true;
 
         latestXAUPrice = _initialXAUPrice;
+        // 链下价格和预言机价格的最大偏差比例，精度为 4 位，例如：1% = 100/10000; 0.8% = 80/10000
+        maxOraclePriceDeviation = 80;
+        // 链下价格和最新 XAU 出售价格的最大偏差比例，精度为 4 位，例如：10% = 1000/10000; 5% = 200/10000
+        maxLatestPriceDeviation = 1000;
         signer = _signer;
     }
 
@@ -507,12 +511,12 @@ contract GHKBuyPool is Initializable, OwnableUpgradeable {
         latestXAUPrice = price;
     }
 
-    // 设置
+    // 设置链下价格和预言机价格的最大偏差比例，精度为 4 位，例如：1% = 100/10000; 0.8% = 80/10000
     function setMaxOraclePriceDeviation(uint256 deviation) external onlyOwner {
         maxOraclePriceDeviation = deviation;
     }
 
-    // 设置链下价格和最新 XAU 出售价格的最大偏差比例，分母是 10000，10% = 1000/10000 就传入 1000，2% = 200/10000 就传入 200
+    // 链下价格和最新 XAU 出售价格的最大偏差比例，精度为 4 位，例如：10% = 1000/10000; 5% = 200/10000
     function setMaxLatestPriceDeviation(uint256 deviation) external onlyOwner {
         maxLatestPriceDeviation = deviation;
     }
