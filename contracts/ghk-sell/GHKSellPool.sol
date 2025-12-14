@@ -105,14 +105,16 @@ contract GHKSellPool is Initializable, OwnableUpgradeable {
     function initialize(
         address _GHK,
         address _USDT,
-        address _XAU_USD,
+        address _dataFeedXAU,
+        address _dataFeedUSDT,
         uint256 _initialXAUPrice,
         address _signer
     ) public initializer {
         __Ownable_init(msg.sender);
         GHK = IERC20(_GHK);
         tradeTokens[_USDT] = true;
-        dataFeed = AggregatorV3Interface(_XAU_USD);
+        dataFeed = AggregatorV3Interface(_dataFeedXAU);
+        dataFeedUSDT_USD = AggregatorV3Interface(_dataFeedUSDT);
         OZ_TO_G = 311034768000;
         //线上赎回最小值 - 0.01g
         SELL_GHK_AMOUNT_MIN = 1 * 1e16;

@@ -93,16 +93,22 @@ contract GHKBuyPool is Initializable, OwnableUpgradeable {
         address _GHKE,
         address _USDT,
         address _USDC,
-        address _XAU_USD,
+        address _dataFeedXAU,
+        address _dataFeedUSDT,
+        address _dataFeedUSDC,
         uint256 _initialXAUPrice,
         address _signer
     ) public initializer {
         __Ownable_init(msg.sender);
         GHK = IERC20(_GHK);
         GHKE = IERC20(_GHKE);
+        USDT = _USDT;
+        USDC = _USDC;
         tradeTokens[_USDT] = true;
         tradeTokens[_USDC] = true;
-        dataFeed = AggregatorV3Interface(_XAU_USD);
+        dataFeed = AggregatorV3Interface(_dataFeedXAU);
+        dataFeedUSDT_USD = AggregatorV3Interface(_dataFeedUSDT);
+        dataFeedUSDC_USD = AggregatorV3Interface(_dataFeedUSDC);
         BUY_GHK_AMOUNT_MIN = 1 * 1e16;
         BUY_GHK_AMOUNT_MAX = 5000 * 1e18;
         GHK_GHKE_PRICE = 10000 * 1e8;
