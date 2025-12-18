@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.30;
+pragma solidity 0.8.30;
 
 // import "hardhat/console.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
@@ -57,14 +57,6 @@ contract GHKBuyPool is Initializable, OwnableUpgradeable {
     //GHKE Buy Pool
     address public GHKE_BUY_POOL;
 
-    // // ============ 事件 ============
-    // event Buy(
-    //     address indexed to,
-    //     uint256 ghkValue,
-    //     address tradeToken,
-    //     uint256 price,
-    //     uint256 usdValue
-    // );
     event BuyOffline(address indexed to, uint256 ghkValue);
 
     event AddedToBlacklist(address indexed account);
@@ -151,6 +143,7 @@ contract GHKBuyPool is Initializable, OwnableUpgradeable {
 
     function _checkOffchainXAUPrice(uint256 offchainXAUPrice) internal view {
         (, int256 price, , , ) = dataFeed.latestRoundData();
+        // 在 bnb testnet 链上从 oracle 查询到的 XAU 价格精度是 18 位，但在 bnb mainnet 链上只有 8 位
         uint256 oracleXAUPrice = uint256(price); // bnb testnet
         // uint256 oracleXAUPrice = uint256(price * 1e10); // bnb mainnet
 
@@ -180,7 +173,7 @@ contract GHKBuyPool is Initializable, OwnableUpgradeable {
         // );
     }
 
-    /// @dev 获取金价，单位 USD/g，精度 10 位
+    /// @dev 获取金价，单位 USD/g，精度 10 位。该方法前端也在调用
     /// @param offchainXAUPrice 链下 XAU 价格，单位 USD/oz，精度 18 位
     /// @return 金价，单位 USD/g，精度 10 位
     function getPrice(uint256 offchainXAUPrice) public view returns (uint256) {

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.30;
+pragma solidity 0.8.30;
 
 // import "hardhat/console.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
@@ -51,15 +51,6 @@ contract GHKSellPool is Initializable, OwnableUpgradeable {
     mapping(address => bool) public tradeTokens;
     //黑名单
     mapping(address => bool) private _blacklist;
-
-    // event Buy(
-    //     address indexed to,
-    //     uint256 ghkValue,
-    //     address tradeToken,
-    //     uint256 price,
-    //     uint256 usdValue
-    // );
-    // event BuyOffline(address indexed to, uint256 ghkValue);
 
     event Sell(
         address indexed from, // 赎回用户
@@ -164,6 +155,7 @@ contract GHKSellPool is Initializable, OwnableUpgradeable {
 
     function _checkOffchainXAUPrice(uint256 offchainXAUPrice) internal view {
         (, int256 price, , , ) = dataFeed.latestRoundData();
+        // 在 bnb testnet 链上从 oracle 查询到的 XAU 价格精度是 18 位，但在 bnb mainnet 链上只有 8 位
         uint256 oracleXAUPrice = uint256(price); // bnb testnet
         // uint256 oracleXAUPrice = uint256(price * 1e10); // bnb mainnet
 
@@ -420,20 +412,4 @@ contract GHKSellPool is Initializable, OwnableUpgradeable {
         uint256 usdtPrice = (uint256(price) * 1e10); // 价格预言机返回的是 8 位精度，扩大 1e10 变成 18 位精度
         return usdtPrice;
     }
-
-    // address public USDT;
-    //
-    // function setUSDT(address _USDT) external onlyOwner {
-    //     USDT = _USDT;
-    // }
-
-    // event TokenSellEvent(
-    //     address indexed to,
-    //     uint256 ghkValue,
-    //     address tradeToken,
-    //     uint256 gPrice,
-    //     uint256 usdValue,
-    //     uint256 tokenPrice,
-    //     uint256 tokenValue
-    // );
 }

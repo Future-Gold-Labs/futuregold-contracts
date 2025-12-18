@@ -1,16 +1,20 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.30;
+pragma solidity 0.8.30;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20PausableUpgradeable.sol";
+import {ERC20BurnableUpgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20BurnableUpgradeable.sol";
+import {ERC20PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20PausableUpgradeable.sol";
+import {ERC20PermitUpgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20PermitUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
 contract GHKToken is
     Initializable,
     ERC20Upgradeable,
+    ERC20BurnableUpgradeable,
     ERC20PausableUpgradeable,
-    OwnableUpgradeable
+    OwnableUpgradeable,
+    ERC20PermitUpgradeable
 {
     mapping(address => bool) private _blacklist;
     mapping(address => bool) private minters;
@@ -23,8 +27,10 @@ contract GHKToken is
 
     function initialize(uint256 initialSupply) public initializer {
         __ERC20_init("GoldHK", "GHK");
+        __ERC20Burnable_init();
         __ERC20Pausable_init();
         __Ownable_init(msg.sender);
+        __ERC20Permit_init("GoldHK");
 
         _mint(msg.sender, initialSupply * (10 ** decimals()));
     }
@@ -39,13 +45,13 @@ contract GHKToken is
         _mint(to, amount);
     }
 
-    function burn(uint256 amount) external {
-        require(
-            !_blacklist[msg.sender],
-            "BlacklistToken: Burner is blacklisted"
-        );
-        _burn(msg.sender, amount);
-    }
+    // function burn(uint256 amount) external {
+    //     require(
+    //         !_blacklist[msg.sender],
+    //         "BlacklistToken: Burner is blacklisted"
+    //     );
+    //     _burn(msg.sender, amount);
+    // }
 
     function addedToMinters(address account) external onlyOwner {
         require(account != address(0), "Minters: Zero address");
@@ -100,6 +106,4 @@ contract GHKToken is
     function unpause() public onlyOwner {
         _unpause();
     }
-
-    // CAN ADD MORE FUNCTIONS HERE IN THE FUTURE
 }

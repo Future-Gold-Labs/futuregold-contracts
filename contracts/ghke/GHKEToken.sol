@@ -1,16 +1,20 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.30;
+pragma solidity 0.8.30;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20PausableUpgradeable.sol";
+import {ERC20BurnableUpgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20BurnableUpgradeable.sol";
+import {ERC20PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20PausableUpgradeable.sol";
+import {ERC20PermitUpgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20PermitUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
 contract GHKEToken is
     Initializable,
     ERC20Upgradeable,
+    ERC20BurnableUpgradeable,
     ERC20PausableUpgradeable,
-    OwnableUpgradeable
+    OwnableUpgradeable,
+    ERC20PermitUpgradeable
 {
     mapping(address => bool) private _blacklist;
 
@@ -19,8 +23,10 @@ contract GHKEToken is
 
     function initialize() public initializer {
         __ERC20_init("GoldHKE", "GHKE");
+        __ERC20Burnable_init();
         __ERC20Pausable_init();
         __Ownable_init(msg.sender);
+        __ERC20Permit_init("GoldHKE");
 
         _mint(msg.sender, 10 * 100000000 * (10 ** decimals()));
     }

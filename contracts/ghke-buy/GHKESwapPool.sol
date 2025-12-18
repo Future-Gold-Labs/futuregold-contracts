@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.30;
+pragma solidity 0.8.30;
 
 // import "hardhat/console.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
@@ -22,9 +22,6 @@ interface IGHKBuyPool {
 
 contract GHKESwapPool is Initializable, OwnableUpgradeable {
     using SafeERC20 for IERC20;
-
-    // //chainlink预言机
-    // AggregatorV3Interface internal dataFeed;
 
     //最小兑换GHKE的数量
     uint256 public SWAP_GHKE_AMOUNT_MIN;
@@ -64,14 +61,12 @@ contract GHKESwapPool is Initializable, OwnableUpgradeable {
     function initialize(
         address _GHKE,
         address _USDT,
-        // address _XAU_USD,
         address _dataFeedUSDT,
         address _GHK_BUY_POOL_ADDRESS
     ) public initializer {
         __Ownable_init(msg.sender);
         GHKE = IERC20(_GHKE);
         USDT = IERC20(_USDT);
-        // dataFeed = AggregatorV3Interface(_XAU_USD);
         dataFeedUSDT_USD = AggregatorV3Interface(_dataFeedUSDT);
         GHK_BUY_POOL_ADDRESS = _GHK_BUY_POOL_ADDRESS;
         SWAP_GHKE_AMOUNT_MIN = 100 * 1e18;
@@ -80,11 +75,7 @@ contract GHKESwapPool is Initializable, OwnableUpgradeable {
         OZ_TO_G = 311034768000;
     }
 
-    // function setDataFeed(address _priceDataFeed) external onlyOwner {
-    //     dataFeed = AggregatorV3Interface(_priceDataFeed);
-    // }
-
-    /// @dev 获取以 USDT 计价的金价，精度是 1e10
+    /// @dev 获取以 USDT 计价的金价，精度是 1e10。该方法前端也在调用
     /// @param offchainXAUPrice 链下 XAU 价格，单位 USD/oz，精度 18 位
     /// @return 以 USDT 计价的金价，单位 USDT/g，精度 10 位
     function getPrice(uint256 offchainXAUPrice) public view returns (uint256) {
