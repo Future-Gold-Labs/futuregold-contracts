@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.30;
 
-// import "hardhat/console.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
@@ -164,31 +163,15 @@ contract GHKBuyPool is Initializable, OwnableUpgradeable {
                 (latestXAUPrice * (10000 - maxLatestPriceDeviation)) / 10000,
             "Offchain price deviates from latest price too much"
         );
-
-        // console.log(
-        //     "offchainXAUPrice=%s oracleXAUPrice=%s latestXAUPrice=%s",
-        //     offchainXAUPrice,
-        //     oracleXAUPrice,
-        //     latestXAUPrice
-        // );
     }
 
-    /// @dev 获取金价，单位 USD/g，精度 10 位。该方法前端也在调用
-    /// @param offchainXAUPrice 链下 XAU 价格，单位 USD/oz，精度 18 位
-    /// @return 金价，单位 USD/g，精度 10 位
+    /// @dev 获取金价，单位 USD/g，精度 1e10。该方法前端也在调用
+    /// @param offchainXAUPrice 链下 XAU 价格，单位 USD/oz，精度 1e18
+    /// @return 金价，单位 USD/g，精度 1e10
     function getPrice(uint256 offchainXAUPrice) public view returns (uint256) {
-        // (
-        //     ,
-        //     /* uint80 roundID */ int256 price /*uint startedAt*/ /*uint timeStamp*/ /* uint80 answeredInRound */,
-        //     ,
-        //     ,
-        //
-        // ) = dataFeed.latestRoundData();
-
         // 验证链下价格的可靠性
         _checkOffchainXAUPrice(offchainXAUPrice);
 
-        // uint256 gPrice = (uint256(price) * 1e10) / OZ_TO_G / 1e8;
         uint256 gPrice = (offchainXAUPrice * 1e10) / OZ_TO_G / 1e8; // OZ_TO_G 有 10 位精度，返回值的精度是 1e18/1e8=1e10
 
         return gPrice;
@@ -235,12 +218,6 @@ contract GHKBuyPool is Initializable, OwnableUpgradeable {
 
         uint256 usdAmount = (amount * gPrice) / 1e10; // gPrice 是 10 位精度，所以只需除以 1e10。所以 usdAmount 会和 GHK 的精度一样，都是 18 位精度
         require(usdAmount > 0, "Invalid usdAmount");
-        // console.log(
-        //     "amount=%s, gPrice=%s, usdtAmount:%s",
-        //     amount,
-        //     gPrice,
-        //     usdAmount
-        // );
 
         if (tradeToken == USDC) {
             uint256 usdcPrice = getUsdcPrice();
@@ -569,13 +546,7 @@ contract GHKBuyPool is Initializable, OwnableUpgradeable {
 
     //usdcPrice*1e18
     function getUsdcPrice() public view returns (uint256) {
-        (
-            ,
-            /* uint80 roundID */ int256 price /*uint startedAt*/ /*uint timeStamp*/ /* uint80 answeredInRound */,
-            ,
-            ,
-
-        ) = dataFeedUSDC_USD.latestRoundData();
+        (, int256 price, , , ) = dataFeedUSDC_USD.latestRoundData();
         uint256 usdcPrice = (uint256(price) * 1e10); // 价格预言机返回的是 8 位精度，扩大 1e10 变成 18 位精度
         return usdcPrice;
     }
@@ -595,13 +566,7 @@ contract GHKBuyPool is Initializable, OwnableUpgradeable {
 
     //usdtPrice*1e18
     function getUsdtPrice() public view returns (uint256) {
-        (
-            ,
-            /* uint80 roundID */ int256 price /*uint startedAt*/ /*uint timeStamp*/ /* uint80 answeredInRound */,
-            ,
-            ,
-
-        ) = dataFeedUSDT_USD.latestRoundData();
+        (, int256 price, , , ) = dataFeedUSDT_USD.latestRoundData();
         uint256 usdtPrice = (uint256(price) * 1e10); // 价格预言机返回的是 8 位精度，扩大 1e10 变成 18 位精度
         return usdtPrice;
     }

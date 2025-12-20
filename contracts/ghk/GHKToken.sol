@@ -45,14 +45,6 @@ contract GHKToken is
         _mint(to, amount);
     }
 
-    // function burn(uint256 amount) external {
-    //     require(
-    //         !_blacklist[msg.sender],
-    //         "BlacklistToken: Burner is blacklisted"
-    //     );
-    //     _burn(msg.sender, amount);
-    // }
-
     function addedToMinters(address account) external onlyOwner {
         require(account != address(0), "Minters: Zero address");
         require(!minters[account], "Minters: Joined already");

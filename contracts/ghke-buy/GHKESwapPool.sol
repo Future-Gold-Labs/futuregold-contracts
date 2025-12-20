@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.30;
 
-// import "hardhat/console.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
@@ -43,7 +42,6 @@ contract GHKESwapPool is Initializable, OwnableUpgradeable {
     //黑名单
     mapping(address => bool) private _blacklist;
 
-    // ============ 事件 ============
     event Swap(
         address indexed user, // 购买者
         uint256 amount, // 支付的 GHKE 数量
@@ -75,19 +73,14 @@ contract GHKESwapPool is Initializable, OwnableUpgradeable {
         OZ_TO_G = 311034768000;
     }
 
-    /// @dev 获取以 USDT 计价的金价，精度是 1e10。该方法前端也在调用
-    /// @param offchainXAUPrice 链下 XAU 价格，单位 USD/oz，精度 18 位
-    /// @return 以 USDT 计价的金价，单位 USDT/g，精度 10 位
+    /// @dev 获取以 USDT 计价的金价，精度 1e10。该方法前端也在调用
+    /// @param offchainXAUPrice 链下 XAU 价格，单位 USD/oz，精度 1e18
+    /// @return 以 USDT 计价的金价，单位 USDT/g，精度 1e10
     function getPrice(uint256 offchainXAUPrice) public view returns (uint256) {
-        // (
-        //     ,
-        //     /* uint80 roundID */ int256 price /*uint startedAt*/ /*uint timeStamp*/ /* uint80 answeredInRound */,
-        //     ,
-        //     ,
-        //
-        // ) = dataFeed.latestRoundData();
-        // uint256 gPrice = (uint256(price) * 1e10) / OZ_TO_G / 1e8;
-        uint256 gPrice = (offchainXAUPrice * 1e10) / OZ_TO_G / 1e8; // OZ_TO_G 有 10 位精度，返回值的精度是 1e18/1e8=1e10
+        // !! 这里不验证 offchainXAUPrice 的可靠性，由 GHKBuyPool.buyTo() 方法验证
+
+        uint256 gPrice = (offchainXAUPrice * 1e10) / OZ_TO_G / 1e8; // OZ_TO_G 有 10 位精度，gPrice 的精度是 1e18/1e8=1e10
+
         uint256 usdtPrice = getUsdtPrice();
         gPrice = (gPrice * 1e18) / usdtPrice; // 转换成以 USDT 计价的价格。usdtPrice 是 18 位精度，所以返回值是 gPrice 的精度，即 10 位精度
         return gPrice;
@@ -121,18 +114,6 @@ contract GHKESwapPool is Initializable, OwnableUpgradeable {
         require(amount >= SWAP_GHKE_AMOUNT_MIN, "amount less than min");
 
         uint256 usdAmount = (amount * GHKE_USDT_PRICE) / 1e18;
-
-        // console.log(
-        //     "GHKE->USDT->GHK swap called: amount=%s, usdAmount=%s",
-        //     amount,
-        //     usdAmount
-        // );
-        // console.log(
-        //     "msg.sender=%s, this=%s, allowance=%s",
-        //     msg.sender,
-        //     address(this),
-        //     GHKE.allowance(msg.sender, address(this))
-        // );
 
         GHKE.safeTransferFrom(
             msg.sender,
@@ -221,13 +202,7 @@ contract GHKESwapPool is Initializable, OwnableUpgradeable {
 
     //usdtPrice*1e18
     function getUsdtPrice() public view returns (uint256) {
-        (
-            ,
-            /* uint80 roundID */ int256 price /*uint startedAt*/ /*uint timeStamp*/ /* uint80 answeredInRound */,
-            ,
-            ,
-
-        ) = dataFeedUSDT_USD.latestRoundData();
+        (, int256 price, , , ) = dataFeedUSDT_USD.latestRoundData();
         uint256 usdtPrice = (uint256(price) * 1e10); // 价格预言机返回的是 8 位精度，扩大 1e10 变成 18 位精度
         return usdtPrice;
     }
