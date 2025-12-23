@@ -1,9 +1,5 @@
-import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-
 import { network } from "hardhat";
-
-import { getOffchainXAUPrice, sign, sign_with_privateKey } from "./helper.js";
 import { parseUnits } from "viem";
 
 describe("GHKBuyPool", async () => {
@@ -72,7 +68,7 @@ describe("GHKBuyPool", async () => {
       ]);
       const GHKE_UserBalance = await GHKE.read.balanceOf([userWallet]);
 
-      console.log("初始状态：");
+      console.log("质押之后的状态：");
       console.log(" GHK-GHKMiningPool:", GHK_GHKMiningPoolBalance);
       console.log(" GHK-User:", GHK_UserBalance);
       console.log(" GHKE-GHKMiningPool:", GHKE_GHKMiningPoolBalance);

@@ -1,9 +1,8 @@
-import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import { network } from "hardhat";
 
-import { getOffchainXAUPrice, sign, sign_with_privateKey } from "./helper.js";
+import { getOffchainXAUPrice, sign } from "./helper.js";
 import { getContract, parseAbi, parseEther, parseUnits } from "viem";
 
 describe("GHKESwapPool", async () => {
@@ -70,8 +69,7 @@ describe("GHKESwapPool", async () => {
       DATAFEEDS_XAU_USD,
       DATAFEEDS_USDT_USD,
       DATAFEEDS_USDC_USD,
-      4202_242759559214530560n,
-      // 3202_242759559214530560n,
+      4485_242759559214530560n,
       userWallet,
     ]);
     // await GHKBuyPool.write.setUSDT([USDT.address]);
@@ -173,7 +171,7 @@ describe("GHKESwapPool", async () => {
 
     const offchainPriceData = await getOffchainXAUPrice();
     console.log("Offchain XAU price data:", offchainPriceData);
-    const offchainPrice = BigInt(offchainPriceData.ask * 1e18); // chainlink 预言机的价格精度都是 8 位，但在链上都处理成了 18 位所以这里要乘以 1e18 转换为 18 位精度
+    const offchainPrice = BigInt((offchainPriceData.client_buy + offchainPriceData.water_level_buy) * 1e18); // chainlink 预言机的价格精度都是 8 位，但在链上都处理成了 18 位所以这里要乘以 1e18 转换为 18 位精度
     const deadline = BigInt(offchainPriceData.timestamp + 30);
     const sig = await sign(walletClient, offchainPrice, deadline, userWallet);
 

@@ -14,16 +14,13 @@ export async function getOffchainXAUPrice() {
   );
   return (await data.json()) as {
     symbol: string;
-    bid: number;
-    ask: number;
+    client_buy: number;
+    water_level_buy: number;
+    client_sell: number;
+    water_level_sell: number;
     timestamp: number;
   };
-  // {
-  //   symbol: 'XAUUSD',
-  //   bid: 4210.835978742819,
-  //   ask: 4212.608861052538,
-  //   timestamp: 1765336624150
-  // }
+  // {"symbol":"XAUUSD","client_sell":4481.377,"client_buy":4482.522,"water_level_sell":1.0819,"water_level_buy":1.1463,"timestamp":1766484132389}
 }
 
 export async function sign(

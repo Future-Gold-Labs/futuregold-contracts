@@ -71,15 +71,9 @@ describe("GHKBuyPool", async () => {
       DATAFEEDS_XAU_USD,
       DATAFEEDS_USDT_USD,
       DATAFEEDS_USDC_USD,
-      4202_242759559214530560n,
-      // 3202_242759559214530560n,
+      4485_242759559214530560n,
       userWallet,
     ]);
-    // await GHKBuyPool.write.setUSDT([USDT.address]);
-    // await GHKBuyPool.write.setUSDC([USDC.address]);
-
-    // await GHKBuyPool.write.setDataFeedUSDT_USD([DATAFEEDS_USDT_USD]);
-    // await GHKBuyPool.write.setDataFeedUSDC_USD([DATAFEEDS_USDC_USD]);
 
     // 将 GHK 转入 GHKBuyPool 合约
     await GHK.write.transfer([GHKBuyPool.address, 10_000n * 10n ** 18n]);
@@ -140,7 +134,9 @@ describe("GHKBuyPool", async () => {
     const offchainPriceData = await getOffchainXAUPrice();
     console.log("Offchain XAU price data:", offchainPriceData);
 
-    const offchainPrice = BigInt(offchainPriceData.ask * 1e18); // chainlink 预言机的价格精度都是 8 位，但在链上都处理成了 18 位所以这里要乘以 1e18 转换为 18 位精度
+    const offchainPrice = BigInt(
+      (offchainPriceData.client_buy + offchainPriceData.water_level_buy) * 1e18
+    ); // chainlink 预言机的价格精度都是 8 位，但在链上都处理成了 18 位所以这里要乘以 1e18 转换为 18 位精度
     const deadline = BigInt(offchainPriceData.timestamp + 30);
     const sig = await sign_with_privateKey(offchainPrice, deadline, userWallet);
 
@@ -164,7 +160,9 @@ describe("GHKBuyPool", async () => {
     const offchainPriceData = await getOffchainXAUPrice();
     console.log("Offchain XAU price data:", offchainPriceData);
 
-    const offchainPrice = BigInt(offchainPriceData.ask * 1e18); // chainlink 预言机的价格精度都是 8 位，但在链上都处理成了 18 位所以这里要乘以 1e18 转换为 18 位精度
+    const offchainPrice = BigInt(
+      (offchainPriceData.client_buy + offchainPriceData.water_level_buy) * 1e18
+    ); // chainlink 预言机的价格精度都是 8 位，但在链上都处理成了 18 位所以这里要乘以 1e18 转换为 18 位精度
     const deadline = 1733831583n; // BigInt(offchainPriceData.timestamp - 300); // 模拟签名过期
     const sig = await sign(walletClient, offchainPrice, deadline, userWallet);
 
@@ -188,7 +186,9 @@ describe("GHKBuyPool", async () => {
     const offchainPriceData = await getOffchainXAUPrice();
     console.log("Offchain XAU price data:", offchainPriceData);
 
-    const offchainPrice = BigInt(offchainPriceData.ask * 1e18); // chainlink 预言机的价格精度都是 8 位，但在链上都处理成了 18 位所以这里要乘以 1e18 转换为 18 位精度
+    const offchainPrice = BigInt(
+      (offchainPriceData.client_buy + offchainPriceData.water_level_buy) * 1e18
+    ); // chainlink 预言机的价格精度都是 8 位，但在链上都处理成了 18 位所以这里要乘以 1e18 转换为 18 位精度
     const deadline = BigInt(offchainPriceData.timestamp + 30);
     const sig = await sign(walletClient, offchainPrice, deadline, userWallet);
 
@@ -212,7 +212,12 @@ describe("GHKBuyPool", async () => {
     const offchainPriceData = await getOffchainXAUPrice();
     console.log("Offchain XAU price data:", offchainPriceData);
 
-    const offchainPrice = BigInt((offchainPriceData.ask - 1000) * 1e18); // 模拟链下价格过低
+    const offchainPrice = BigInt(
+      (offchainPriceData.client_buy +
+        offchainPriceData.water_level_buy -
+        1000) *
+        1e18
+    ); // 模拟链下价格过低
     const deadline = BigInt(offchainPriceData.timestamp + 30);
     const sig = await sign(walletClient, offchainPrice, deadline, userWallet);
 
@@ -236,7 +241,9 @@ describe("GHKBuyPool", async () => {
     const offchainPriceData = await getOffchainXAUPrice();
     console.log("Offchain XAU price data:", offchainPriceData);
 
-    const offchainPrice = BigInt(offchainPriceData.ask * 1e18);
+    const offchainPrice = BigInt(
+      (offchainPriceData.client_buy + offchainPriceData.water_level_buy) * 1e18
+    );
     const deadline = BigInt(offchainPriceData.timestamp + 30);
     const sig = await sign(walletClient, offchainPrice, deadline, userWallet);
 
@@ -262,7 +269,9 @@ describe("GHKBuyPool", async () => {
 
     const offchainPriceData = await getOffchainXAUPrice();
     console.log("Offchain XAU price data:", offchainPriceData);
-    const offchainPrice = BigInt(offchainPriceData.ask * 1e18); // chainlink 预言机的价格精度都是 8 位，但在链上都处理成了 18 位所以这里要乘以 1e18 转换为 18 位精度
+    const offchainPrice = BigInt(
+      (offchainPriceData.client_buy + offchainPriceData.water_level_buy) * 1e18
+    ); // chainlink 预言机的价格精度都是 8 位，但在链上都处理成了 18 位所以这里要乘以 1e18 转换为 18 位精度
     const deadline = BigInt(offchainPriceData.timestamp + 30);
     const sig = await sign(walletClient, offchainPrice, deadline, userWallet);
     // console.log(
@@ -297,7 +306,7 @@ describe("GHKBuyPool", async () => {
       deadline,
       sig,
     ]);
-    
+
     {
       const GHK_GHKBuyPoolBalance = await GHK.read.balanceOf([
         GHKBuyPool.address,
