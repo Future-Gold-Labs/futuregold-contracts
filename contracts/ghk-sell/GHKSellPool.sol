@@ -15,7 +15,8 @@ contract GHKSellPool is Initializable, OwnableUpgradeable {
     using SafeERC20 for IERC20;
 
     //chainlink预言机
-    AggregatorV3Interface internal dataFeed;
+    AggregatorV3Interface internal dataFeedXAU;
+    AggregatorV3Interface internal dataFeedUSDT;
 
     //线上赎回最小值 - 0.01g
     uint256 public SELL_GHK_AMOUNT_MIN;
@@ -103,8 +104,8 @@ contract GHKSellPool is Initializable, OwnableUpgradeable {
         __Ownable_init(msg.sender);
         GHK = IERC20(_GHK);
         tradeTokens[_USDT] = true;
-        dataFeed = AggregatorV3Interface(_dataFeedXAU);
-        dataFeedUSDT_USD = AggregatorV3Interface(_dataFeedUSDT);
+        dataFeedXAU = AggregatorV3Interface(_dataFeedXAU);
+        dataFeedUSDT = AggregatorV3Interface(_dataFeedUSDT);
         OZ_TO_G = 311034768000;
         //线上赎回最小值 - 0.01g
         SELL_GHK_AMOUNT_MIN = 1 * 1e16;
@@ -129,10 +130,6 @@ contract GHKSellPool is Initializable, OwnableUpgradeable {
         signer = _signer;
     }
 
-    function setDataFeed(address _priceDataFeed) external onlyOwner {
-        dataFeed = AggregatorV3Interface(_priceDataFeed);
-    }
-
     function _verifySignature(
         address user_wallet,
         uint256 offchainXAUPrice,
@@ -153,7 +150,7 @@ contract GHKSellPool is Initializable, OwnableUpgradeable {
     }
 
     function _checkOffchainXAUPrice(uint256 offchainXAUPrice) internal view {
-        (, int256 price, , , ) = dataFeed.latestRoundData();
+        (, int256 price, , , ) = dataFeedXAU.latestRoundData();
         // 在 bnb testnet 链上从 oracle 查询到的 XAU 价格精度是 18 位，但在 bnb mainnet 链上只有 8 位
         uint256 oracleXAUPrice = uint256(price); // bnb testnet
         // uint256 oracleXAUPrice = uint256(price * 1e10); // bnb mainnet
@@ -175,6 +172,12 @@ contract GHKSellPool is Initializable, OwnableUpgradeable {
                 (latestXAUPrice * (10000 - maxLatestPriceDeviation)) / 10000,
             "Offchain price deviates from latest price too much"
         );
+    }
+
+    function getUsdtPrice() public view returns (uint256) {
+        (, int256 price, , , ) = dataFeedUSDT.latestRoundData();
+        uint256 usdtPrice = (uint256(price) * 1e10); // 价格预言机返回的是 8 位精度，扩大 1e10 变成 18 位精度
+        return usdtPrice;
     }
 
     /// @dev 获取以 USDT 计价的金价，精度 1e10。该方法前端也在调用
@@ -283,6 +286,14 @@ contract GHKSellPool is Initializable, OwnableUpgradeable {
         return _blacklist[account];
     }
 
+    function setDataFeedXAU(address _dataFeedXAU) external onlyOwner {
+        dataFeedXAU = AggregatorV3Interface(_dataFeedXAU);
+    }
+
+    function setDataFeedUSDT(address _dataFeedUSDT) external onlyOwner {
+        dataFeedUSDT = AggregatorV3Interface(_dataFeedUSDT);
+    }
+
     // 修改线上赎回最小值
     function setSellGHKAmountMin(uint256 _newMin) external onlyOwner {
         require(_newMin > 0, "Minimum sell amount must be greater than 0");
@@ -376,19 +387,5 @@ contract GHKSellPool is Initializable, OwnableUpgradeable {
     // 设置签名地址
     function setSigner(address _signer) external onlyOwner {
         signer = _signer;
-    }
-
-    //chainlink预言机 USDT-USD
-    AggregatorV3Interface internal dataFeedUSDT_USD;
-
-    function setDataFeedUSDT_USD(address _priceDataFeed) external onlyOwner {
-        dataFeedUSDT_USD = AggregatorV3Interface(_priceDataFeed);
-    }
-
-    //usdtPrice*1e18
-    function getUsdtPrice() public view returns (uint256) {
-        (, int256 price, , , ) = dataFeedUSDT_USD.latestRoundData();
-        uint256 usdtPrice = (uint256(price) * 1e10); // 价格预言机返回的是 8 位精度，扩大 1e10 变成 18 位精度
-        return usdtPrice;
     }
 }

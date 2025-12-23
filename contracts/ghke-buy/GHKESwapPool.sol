@@ -22,6 +22,9 @@ interface IGHKBuyPool {
 contract GHKESwapPool is Initializable, OwnableUpgradeable {
     using SafeERC20 for IERC20;
 
+    //chainlink预言机 USDT-USD
+    AggregatorV3Interface internal dataFeedUSDT;
+
     //最小兑换GHKE的数量
     uint256 public SWAP_GHKE_AMOUNT_MIN;
 
@@ -65,12 +68,19 @@ contract GHKESwapPool is Initializable, OwnableUpgradeable {
         __Ownable_init(msg.sender);
         GHKE = IERC20(_GHKE);
         USDT = IERC20(_USDT);
-        dataFeedUSDT_USD = AggregatorV3Interface(_dataFeedUSDT);
+        dataFeedUSDT = AggregatorV3Interface(_dataFeedUSDT);
         GHK_BUY_POOL_ADDRESS = _GHK_BUY_POOL_ADDRESS;
         SWAP_GHKE_AMOUNT_MIN = 100 * 1e18;
         GHKE_USDT_PRICE = 2 * 1e17;
 
         OZ_TO_G = 311034768000;
+    }
+
+    //usdtPrice*1e18
+    function getUsdtPrice() public view returns (uint256) {
+        (, int256 price, , , ) = dataFeedUSDT.latestRoundData();
+        uint256 usdtPrice = (uint256(price) * 1e10); // 价格预言机返回的是 8 位精度，扩大 1e10 变成 18 位精度
+        return usdtPrice;
     }
 
     /// @dev 获取以 USDT 计价的金价，精度 1e10。该方法前端也在调用
@@ -151,6 +161,10 @@ contract GHKESwapPool is Initializable, OwnableUpgradeable {
         return _blacklist[account];
     }
 
+    function setDataFeedUSDT(address _dataFeedUSDT) external onlyOwner {
+        dataFeedUSDT = AggregatorV3Interface(_dataFeedUSDT);
+    }
+
     /**
      * @dev 更新兑换时GHKE最小值
      * @param _newMin 最新的最小值，以代币精度位 1e18 为精度单位
@@ -191,19 +205,5 @@ contract GHKESwapPool is Initializable, OwnableUpgradeable {
         );
         IERC20(coin).safeTransfer(to, amount);
         emit EmergencyWithdraw(coin, to, amount);
-    }
-
-    //chainlink预言机 USDT-USD
-    AggregatorV3Interface internal dataFeedUSDT_USD;
-
-    function setDataFeedUSDT_USD(address _priceDataFeed) external onlyOwner {
-        dataFeedUSDT_USD = AggregatorV3Interface(_priceDataFeed);
-    }
-
-    //usdtPrice*1e18
-    function getUsdtPrice() public view returns (uint256) {
-        (, int256 price, , , ) = dataFeedUSDT_USD.latestRoundData();
-        uint256 usdtPrice = (uint256(price) * 1e10); // 价格预言机返回的是 8 位精度，扩大 1e10 变成 18 位精度
-        return usdtPrice;
     }
 }

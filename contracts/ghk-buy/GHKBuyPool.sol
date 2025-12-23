@@ -15,7 +15,12 @@ contract GHKBuyPool is Initializable, OwnableUpgradeable {
     using SafeERC20 for IERC20;
 
     //chainlink预言机
-    AggregatorV3Interface internal dataFeed;
+    AggregatorV3Interface internal dataFeedXAU;
+    AggregatorV3Interface internal dataFeedUSDT;
+    AggregatorV3Interface internal dataFeedUSDC;
+
+    address public USDT;
+    address public USDC;
 
     //线上购买最小值 - 0.01g
     uint256 public BUY_GHK_AMOUNT_MIN;
@@ -55,6 +60,27 @@ contract GHKBuyPool is Initializable, OwnableUpgradeable {
 
     //GHKE Buy Pool
     address public GHKE_BUY_POOL;
+
+    event BuyEvent(
+        address indexed to, // 购买者
+        address inviter, // 邀请人
+        uint256 ghkValue, // 购买的 GHK 数量
+        address tradeToken, // 购买使用的交易代币
+        uint256 price, // 当时的金价，单位：USD/g，精度 1e10
+        uint256 usdValue // 购买的等值 USD 数量，等于 ghkValue*price
+    );
+
+    event BindInviter(address indexed to, address inviter);
+
+    event TokenBuyEvent(
+        address indexed to, // 购买者
+        uint256 ghkValue, // 购买的 GHK 数量
+        address tradeToken, // 购买使用的交易代币
+        uint256 gPrice, // 当时的金价，单位：USD/g，精度 1e10
+        uint256 usdValue, // 购买的等值 USD 数量，等于 ghkValue*price
+        uint256 tokenPrice, // 购买使用的交易代币的价格
+        uint256 tokenValue // 购买使用的交易代币的数量
+    );
 
     event BuyOffline(address indexed to, uint256 ghkValue);
 
@@ -97,9 +123,9 @@ contract GHKBuyPool is Initializable, OwnableUpgradeable {
         USDC = _USDC;
         tradeTokens[_USDT] = true;
         tradeTokens[_USDC] = true;
-        dataFeed = AggregatorV3Interface(_dataFeedXAU);
-        dataFeedUSDT_USD = AggregatorV3Interface(_dataFeedUSDT);
-        dataFeedUSDC_USD = AggregatorV3Interface(_dataFeedUSDC);
+        dataFeedXAU = AggregatorV3Interface(_dataFeedXAU);
+        dataFeedUSDT = AggregatorV3Interface(_dataFeedUSDT);
+        dataFeedUSDC = AggregatorV3Interface(_dataFeedUSDC);
         BUY_GHK_AMOUNT_MIN = 1 * 1e16;
         BUY_GHK_AMOUNT_MAX = 5000 * 1e18;
         GHK_GHKE_PRICE = 10000 * 1e8;
@@ -115,10 +141,6 @@ contract GHKBuyPool is Initializable, OwnableUpgradeable {
         // 链下价格和最新 XAU 出售价格的最大偏差比例，精度为 4 位，例如：10% = 1000/10000; 5% = 200/10000
         maxLatestPriceDeviation = 1000;
         signer = _signer;
-    }
-
-    function setDataFeed(address _priceDataFeed) external onlyOwner {
-        dataFeed = AggregatorV3Interface(_priceDataFeed);
     }
 
     function _verifySignature(
@@ -141,7 +163,7 @@ contract GHKBuyPool is Initializable, OwnableUpgradeable {
     }
 
     function _checkOffchainXAUPrice(uint256 offchainXAUPrice) internal view {
-        (, int256 price, , , ) = dataFeed.latestRoundData();
+        (, int256 price, , , ) = dataFeedXAU.latestRoundData();
         // 在 bnb testnet 链上从 oracle 查询到的 XAU 价格精度是 18 位，但在 bnb mainnet 链上只有 8 位
         uint256 oracleXAUPrice = uint256(price); // bnb testnet
         // uint256 oracleXAUPrice = uint256(price * 1e10); // bnb mainnet
@@ -175,6 +197,20 @@ contract GHKBuyPool is Initializable, OwnableUpgradeable {
         uint256 gPrice = (offchainXAUPrice * 1e10) / OZ_TO_G / 1e8; // OZ_TO_G 有 10 位精度，返回值的精度是 1e18/1e8=1e10
 
         return gPrice;
+    }
+
+    //usdcPrice*1e18
+    function getUsdcPrice() public view returns (uint256) {
+        (, int256 price, , , ) = dataFeedUSDC.latestRoundData();
+        uint256 usdcPrice = (uint256(price) * 1e10); // 价格预言机返回的是 8 位精度，扩大 1e10 变成 18 位精度
+        return usdcPrice;
+    }
+
+    //usdtPrice*1e18
+    function getUsdtPrice() public view returns (uint256) {
+        (, int256 price, , , ) = dataFeedUSDT.latestRoundData();
+        uint256 usdtPrice = (uint256(price) * 1e10); // 价格预言机返回的是 8 位精度，扩大 1e10 变成 18 位精度
+        return usdtPrice;
     }
 
     /// 购买-线上
@@ -412,6 +448,26 @@ contract GHKBuyPool is Initializable, OwnableUpgradeable {
         return _blacklist[account];
     }
 
+    function setDataFeedXAU(address _dataFeedXAU) external onlyOwner {
+        dataFeedXAU = AggregatorV3Interface(_dataFeedXAU);
+    }
+
+    function setDataFeedUSDT(address _dataFeedUSDT) external onlyOwner {
+        dataFeedUSDT = AggregatorV3Interface(_dataFeedUSDT);
+    }
+
+    function setDataFeedUSDC(address _dataFeedUSDC) external onlyOwner {
+        dataFeedUSDC = AggregatorV3Interface(_dataFeedUSDC);
+    }
+
+    function setUSDT(address _USDT) external onlyOwner {
+        USDT = _USDT;
+    }
+
+    function setUSDC(address _USDC) external onlyOwner {
+        USDC = _USDC;
+    }
+
     /**
      * @dev 修改线上购买最小值
      * @param _newMin 新价格，以 代币精度位
@@ -514,66 +570,5 @@ contract GHKBuyPool is Initializable, OwnableUpgradeable {
         );
         IERC20(coin).safeTransfer(to, amount);
         emit EmergencyWithdraw(coin, to, amount);
-    }
-
-    event BuyEvent(
-        address indexed to, // 购买者
-        address inviter, // 邀请人
-        uint256 ghkValue, // 购买的 GHK 数量
-        address tradeToken, // 购买使用的交易代币
-        uint256 price, // 当时的金价，单位：USD/g，精度 1e10
-        uint256 usdValue // 购买的等值 USD 数量，等于 ghkValue*price
-    );
-
-    event BindInviter(address indexed to, address inviter);
-
-    event TokenBuyEvent(
-        address indexed to, // 购买者
-        uint256 ghkValue, // 购买的 GHK 数量
-        address tradeToken, // 购买使用的交易代币
-        uint256 gPrice, // 当时的金价，单位：USD/g，精度 1e10
-        uint256 usdValue, // 购买的等值 USD 数量，等于 ghkValue*price
-        uint256 tokenPrice, // 购买使用的交易代币的价格
-        uint256 tokenValue // 购买使用的交易代币的数量
-    );
-
-    //chainlink预言机 USDC-USD
-    AggregatorV3Interface internal dataFeedUSDC_USD;
-
-    function setDataFeedUSDC_USD(address _priceDataFeed) external onlyOwner {
-        dataFeedUSDC_USD = AggregatorV3Interface(_priceDataFeed);
-    }
-
-    //usdcPrice*1e18
-    function getUsdcPrice() public view returns (uint256) {
-        (, int256 price, , , ) = dataFeedUSDC_USD.latestRoundData();
-        uint256 usdcPrice = (uint256(price) * 1e10); // 价格预言机返回的是 8 位精度，扩大 1e10 变成 18 位精度
-        return usdcPrice;
-    }
-
-    address public USDC;
-
-    function setUSDC(address _USDC) external onlyOwner {
-        USDC = _USDC;
-    }
-
-    //chainlink预言机 USDT-USD
-    AggregatorV3Interface internal dataFeedUSDT_USD;
-
-    function setDataFeedUSDT_USD(address _priceDataFeed) external onlyOwner {
-        dataFeedUSDT_USD = AggregatorV3Interface(_priceDataFeed);
-    }
-
-    //usdtPrice*1e18
-    function getUsdtPrice() public view returns (uint256) {
-        (, int256 price, , , ) = dataFeedUSDT_USD.latestRoundData();
-        uint256 usdtPrice = (uint256(price) * 1e10); // 价格预言机返回的是 8 位精度，扩大 1e10 变成 18 位精度
-        return usdtPrice;
-    }
-
-    address public USDT;
-
-    function setUSDT(address _USDT) external onlyOwner {
-        USDT = _USDT;
     }
 }
