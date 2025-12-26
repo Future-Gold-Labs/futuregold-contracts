@@ -26,6 +26,8 @@ contract GHKBuyPool is Initializable, OwnableUpgradeable {
     uint256 public BUY_GHK_AMOUNT_MIN;
     //线上购买最大值，扩大 1e18
     uint256 public BUY_GHK_AMOUNT_MAX;
+    //购买手续费，扩大10000倍
+    uint256 public BUY_GHK_FEE_PERCENTAGE;
 
     //GHK合约地址
     IERC20 public GHK;
@@ -91,6 +93,7 @@ contract GHKBuyPool is Initializable, OwnableUpgradeable {
 
     event BuyGHKAmountMinUpdated(uint256 indexed oldVal, uint256 newVal);
     event BuyGHKAmountMaxUpdated(uint256 indexed oldVal, uint256 newVal);
+    event BuyGHKFeePercentageUpdated(uint256 indexed oldVal, uint256 newVal);
     event EmergencyWithdraw(address indexed coin, address to, uint256 amount);
     event InviterReward(
         address indexed user, // 被邀请人
@@ -256,7 +259,11 @@ contract GHKBuyPool is Initializable, OwnableUpgradeable {
         uint256 gPrice = getPrice(offchainXAUPrice);
         require(gPrice > 0, "Invalid gold price");
 
-        uint256 usdAmount = (amount * gPrice) / 1e10; // gPrice 是 10 位精度，所以只需除以 1e10。所以 usdAmount 会和 GHK 的精度一样，都是 18 位精度
+        uint256 usdAmount = (amount *
+            (BUY_GHK_FEE_PERCENTAGE + 10000) *
+            gPrice) /
+            10000 /
+            1e10; // gPrice 是 10 位精度，所以只需除以 1e10。所以 usdAmount 会和 GHK 的精度一样，都是 18 位精度
         require(usdAmount > 0, "Invalid usdAmount");
 
         if (tradeToken == USDC) {
@@ -499,6 +506,19 @@ contract GHKBuyPool is Initializable, OwnableUpgradeable {
         uint256 oldValue = BUY_GHK_AMOUNT_MAX;
         BUY_GHK_AMOUNT_MAX = _newMax;
         emit BuyGHKAmountMaxUpdated(oldValue, _newMax);
+    }
+
+    // 修改购买手续费
+    function setBuyGHKFeePercentage(
+        uint256 _newFeePercentage
+    ) external onlyOwner {
+        require(
+            _newFeePercentage <= 10000,
+            "Fee percentage cannot exceed 100%"
+        );
+        uint256 oldValue = BUY_GHK_FEE_PERCENTAGE;
+        BUY_GHK_FEE_PERCENTAGE = _newFeePercentage;
+        emit BuyGHKFeePercentageUpdated(oldValue, _newFeePercentage);
     }
 
     /**
