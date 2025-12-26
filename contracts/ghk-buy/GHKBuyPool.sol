@@ -22,9 +22,9 @@ contract GHKBuyPool is Initializable, OwnableUpgradeable {
     address public USDT;
     address public USDC;
 
-    //线上购买最小值 - 0.01g
+    //线上购买最小值，扩大 1e18
     uint256 public BUY_GHK_AMOUNT_MIN;
-    //线上购买最大值 - 5000g
+    //线上购买最大值，扩大 1e18
     uint256 public BUY_GHK_AMOUNT_MAX;
 
     //GHK合约地址
@@ -48,11 +48,11 @@ contract GHKBuyPool is Initializable, OwnableUpgradeable {
     //邀请人
     mapping(address => bool) public inviterStatus;
     mapping(address => address) public inviters;
-    //GHKE->GHK的价格 10000 = 1GHK=10000GHKE
+    //GHKE->GHK的价格，精度为 8 位
     uint256 public GHK_GHKE_PRICE;
-    //一级邀请奖励比例 1% = 100/10000
+    //一级邀请奖励比例，扩大10000倍
     uint256 public INVITER_REWARD_LEVEL_1;
-    //二级邀请奖励比例 0.5% = 50/10000
+    //二级邀请奖励比例，扩大10000倍
     uint256 public INVITER_REWARD_LEVEL_2;
 
     //黑名单
@@ -87,17 +87,19 @@ contract GHKBuyPool is Initializable, OwnableUpgradeable {
     event AddedToBlacklist(address indexed account);
     event RemovedFromBlacklist(address indexed account);
 
+    event USDToAddressUpdated(address oldTo, address newTo);
+
     event BuyGHKAmountMinUpdated(uint256 indexed oldVal, uint256 newVal);
     event BuyGHKAmountMaxUpdated(uint256 indexed oldVal, uint256 newVal);
     event EmergencyWithdraw(address indexed coin, address to, uint256 amount);
     event InviterReward(
-        address indexed user,
-        uint256 level,
-        address inviter,
-        uint256 inviterReward,
-        uint256 ghkAmount,
-        uint256 rate,
-        uint256 price
+        address indexed user, // 被邀请人
+        uint256 level, // 邀请等级
+        address inviter, // 邀请人
+        uint256 inviterReward, // 邀请人获得的奖励数量
+        uint256 ghkAmount, // 被邀请人购买的 GHK 数量
+        uint256 rate, // 邀请奖励比例
+        uint256 price // GHK/GHKE 价格
     );
 
     event TradeTokenUpdated(address indexed token, bool enabled);
@@ -106,6 +108,7 @@ contract GHKBuyPool is Initializable, OwnableUpgradeable {
     event InviterRewardLevel2Updated(uint256 rate);
 
     function initialize(
+        address _usdToAddress,
         address _GHK,
         address _GHKE,
         address _USDT,
@@ -126,20 +129,21 @@ contract GHKBuyPool is Initializable, OwnableUpgradeable {
         dataFeedXAU = AggregatorV3Interface(_dataFeedXAU);
         dataFeedUSDT = AggregatorV3Interface(_dataFeedUSDT);
         dataFeedUSDC = AggregatorV3Interface(_dataFeedUSDC);
-        BUY_GHK_AMOUNT_MIN = 1 * 1e16;
-        BUY_GHK_AMOUNT_MAX = 5000 * 1e18;
-        GHK_GHKE_PRICE = 10000 * 1e8;
-        INVITER_REWARD_LEVEL_1 = 100;
-        INVITER_REWARD_LEVEL_2 = 50;
+        BUY_GHK_AMOUNT_MIN = 10 * 1e18; // 10
+        BUY_GHK_AMOUNT_MAX = 5000 * 1e18; // 5000
+        BUY_GHK_FEE_PERCENTAGE = 25; // 0.25%
+        GHK_GHKE_PRICE = 100 * 1e8; // 100
+        INVITER_REWARD_LEVEL_1 = 100; // 1%
+        INVITER_REWARD_LEVEL_2 = 50; // 0.5%
         OZ_TO_G = 311034768000;
-        USD_TO_ADDRESS = msg.sender;
-        inviterStatus[msg.sender] = true;
+        USD_TO_ADDRESS = _usdToAddress;
+        inviterStatus[_usdToAddress] = true;
 
         latestXAUPrice = _initialXAUPrice;
         // 链下价格和预言机价格的最大偏差比例，精度为 4 位，例如：1% = 100/10000; 0.8% = 80/10000
-        maxOraclePriceDeviation = 80;
+        maxOraclePriceDeviation = 80; // 0.8%
         // 链下价格和最新 XAU 出售价格的最大偏差比例，精度为 4 位，例如：10% = 1000/10000; 5% = 200/10000
-        maxLatestPriceDeviation = 1000;
+        maxLatestPriceDeviation = 1000; // 10%
         signer = _signer;
     }
 
@@ -468,6 +472,13 @@ contract GHKBuyPool is Initializable, OwnableUpgradeable {
         USDC = _USDC;
     }
 
+    function setUsdToAddress(address _usdToAddress) external onlyOwner {
+        require(_usdToAddress != address(0), "Invalid address");
+        address oldTo = USD_TO_ADDRESS;
+        USD_TO_ADDRESS = _usdToAddress;
+        emit USDToAddressUpdated(oldTo, _usdToAddress);
+    }
+
     /**
      * @dev 修改线上购买最小值
      * @param _newMin 新价格，以 代币精度位
@@ -504,7 +515,7 @@ contract GHKBuyPool is Initializable, OwnableUpgradeable {
     }
 
     /**
-     * @dev 更新 GHK/GHKE 价格（例如调整为 1 GHK = 12000 GHKE）
+     * @dev 更新 GHK/GHKE 价格
      * @param newPrice 新价格，以 1e8 为精度单位
      */
     function setGHK_GHKE_Price(uint256 newPrice) external onlyOwner {

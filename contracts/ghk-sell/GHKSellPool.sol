@@ -18,14 +18,14 @@ contract GHKSellPool is Initializable, OwnableUpgradeable {
     AggregatorV3Interface internal dataFeedXAU;
     AggregatorV3Interface internal dataFeedUSDT;
 
-    //线上赎回最小值 - 0.01g
+    //线上赎回最小值
     uint256 public SELL_GHK_AMOUNT_MIN;
     //线上赎回最大值->超过的需要转人工赎回
     uint256 public SELL_GHK_AMOUNT_MAX;
 
-    //实物黄金赎回最小值 - 10g
+    //实物黄金赎回最小值
     uint256 public SELL_OFFLINE_GHK_AMOUNT_MIN;
-    //实物黄金最大值 - 1000000g
+    //实物黄金最大值
     uint256 public SELL_OFFLINE_GHK_AMOUNT_MAX;
 
     //线上赎回手续费 - 扩大10000倍
@@ -107,26 +107,26 @@ contract GHKSellPool is Initializable, OwnableUpgradeable {
         dataFeedXAU = AggregatorV3Interface(_dataFeedXAU);
         dataFeedUSDT = AggregatorV3Interface(_dataFeedUSDT);
         OZ_TO_G = 311034768000;
-        //线上赎回最小值 - 0.01g
-        SELL_GHK_AMOUNT_MIN = 1 * 1e16;
+        //线上赎回最小值
+        SELL_GHK_AMOUNT_MIN = 10 * 1e18; // 10
         //线上赎回最大值->超过的需要转人工赎回
-        SELL_GHK_AMOUNT_MAX = 2 * 1e18;
+        SELL_GHK_AMOUNT_MAX = 20 * 1e18; // 20
 
-        //实物黄金赎回最小值 - 10g
-        SELL_OFFLINE_GHK_AMOUNT_MIN = 10 * 1e18;
-        //实物黄金最大值 - 1000000g
-        SELL_OFFLINE_GHK_AMOUNT_MAX = 1000000 * 1e18;
+        //实物黄金赎回最小值
+        SELL_OFFLINE_GHK_AMOUNT_MIN = 1000 * 1e18; // 1000
+        //实物黄金最大值
+        SELL_OFFLINE_GHK_AMOUNT_MAX = 100000 * 1e18; // 100000
 
         //线上赎回手续费 - 扩大10000倍
-        SELL_GHK_FEE_PERCENTAGE = 100;
+        SELL_GHK_FEE_PERCENTAGE = 25; // 0.25%
         //实物黄金赎回手续费 - 扩大10000倍
-        SELL_OFFLINE_GHK_FEE_PERCENTAGE = 200;
+        SELL_OFFLINE_GHK_FEE_PERCENTAGE = 50; // 0.5%
 
         latestXAUPrice = _initialXAUPrice;
         // 链下价格和预言机价格的最大偏差比例，精度为 4 位，例如：1% = 100/10000; 0.8% = 80/10000
-        maxOraclePriceDeviation = 80;
+        maxOraclePriceDeviation = 80; // 0.8%
         // 链下价格和最新 XAU 出售价格的最大偏差比例，精度为 4 位，例如：10% = 1000/10000; 5% = 200/10000
-        maxLatestPriceDeviation = 1000;
+        maxLatestPriceDeviation = 1000; // 10%
         signer = _signer;
     }
 

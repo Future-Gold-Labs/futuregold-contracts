@@ -28,10 +28,10 @@ contract GHKEMiningPool is Initializable, OwnableUpgradeable {
     uint256 public currentRewardPerDay;
     // 最大质押记录数
     uint256 public MAX_STAKES;
-    //最小质押GHK数量
+    //最小质押GHK数量，以 代币精度位
     uint256 public MIN_STAKE_GHK_AMOUNT;
 
-    // 锁定周期（90 天）
+    // 锁定周期
     uint256 public LOCK_PERIOD;
     // 代币合约地址
     IERC20 public ghkToken; // $GHK 代币
@@ -45,7 +45,6 @@ contract GHKEMiningPool is Initializable, OwnableUpgradeable {
     event MinStakeGhkAmountUpdated(uint256 indexed oldVal, uint256 newVal);
     event LockPeriodUpdated(uint256 indexed oldVal, uint256 newVal);
 
-    // 初始化函数（代替构造函数）
     function initialize(
         address _ghkToken,
         address _ghkeToken
@@ -53,13 +52,13 @@ contract GHKEMiningPool is Initializable, OwnableUpgradeable {
         __Ownable_init(msg.sender);
         ghkToken = IERC20(_ghkToken);
         ghkeToken = IERC20(_ghkeToken);
-        currentRewardPerDay = 1e18; // 初始每日奖励 1 $GHKE
+        currentRewardPerDay = 1e15; // 0.001
         lastUpdateTime = block.timestamp;
         // 最大质押记录数
         MAX_STAKES = 1000;
-        // 锁定周期（90 天）
-        LOCK_PERIOD = 3600; //当前1小时
-        MIN_STAKE_GHK_AMOUNT = 1e18;
+        // 锁定周期
+        LOCK_PERIOD = 30 days;
+        MIN_STAKE_GHK_AMOUNT = 100 * 1e18; // 100
     }
 
     // 更新累积奖励率
@@ -75,7 +74,10 @@ contract GHKEMiningPool is Initializable, OwnableUpgradeable {
 
     // 质押功能
     function deposit(uint256 amount) external {
-        require(amount > 0, "Stake amount must be greater than 0");
+        require(
+            amount >= MIN_STAKE_GHK_AMOUNT,
+            "Stake amount must be greater than 0"
+        );
         require(
             stakes[msg.sender].length < MAX_STAKES,
             "Too many stake records"

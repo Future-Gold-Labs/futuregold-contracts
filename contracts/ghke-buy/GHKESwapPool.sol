@@ -71,7 +71,7 @@ contract GHKESwapPool is Initializable, OwnableUpgradeable {
         dataFeedUSDT = AggregatorV3Interface(_dataFeedUSDT);
         GHK_BUY_POOL_ADDRESS = _GHK_BUY_POOL_ADDRESS;
         SWAP_GHKE_AMOUNT_MIN = 100 * 1e18;
-        GHKE_USDT_PRICE = 2 * 1e17;
+        GHKE_USDT_PRICE = 1e17; // 0.1
 
         OZ_TO_G = 311034768000;
     }
