@@ -1,5 +1,4 @@
 import { buildModule } from "@nomicfoundation/hardhat-ignition/modules";
-import { parseUnits } from "viem";
 
 export default buildModule("GHKToken", (m) => {
   const owner = m.getAccount(0);
@@ -12,7 +11,7 @@ export default buildModule("GHKToken", (m) => {
     owner,
     // function initialize(uint256 initialSupply) public initializer {}
     m.encodeFunctionCall(ghkToken, "initialize", [
-      parseUnits("1000000", 18), // 100w
+      1000_000n, // 100w
     ]),
   ]);
 

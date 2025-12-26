@@ -43,13 +43,7 @@ export default defineConfig({
       chainType: "l1",
       url: "https://bsc-testnet-rpc.publicnode.com",
       reownAccounts: true,
-      // accounts: {
-      //   mnemonic: configVariable("METAMASK_MNEMONIC_DEV"),
-      //   initialIndex: 0,
-      // },
-      // ignition: {
-      //   gasPrice: 900984013107n,
-      // },
+      // accounts: ["0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"],
     },
   },
   verify: {

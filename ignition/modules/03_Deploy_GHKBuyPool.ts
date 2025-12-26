@@ -15,10 +15,11 @@ export default buildModule("GHKBuyPool", (m) => {
   const proxy = m.contract("TransparentUpgradeableProxy", [
     ghkBuyPool,
     owner,
-    // function initialize(address _GHK, address _GHKE, address _USDT, address _USDC,
+    // function initialize(address _usdToAddress, address _GHK, address _GHKE, address _USDT, address _USDC,
     //  address _dataFeedXAU, address _dataFeedUSDT, address _dataFeedUSDC,
     //  uint256 _initialXAUPrice, address _signer) public initializer {}
     m.encodeFunctionCall(ghkBuyPool, "initialize", [
+      m.getParameter("USD_TO_ADDRESS"),
       ghkToken,
       ghkeToken,
       m.getParameter("USDT"),
