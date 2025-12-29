@@ -63,16 +63,6 @@ contract GHKBuyPool is Initializable, OwnableUpgradeable {
     //GHKE Buy Pool
     address public GHKE_BUY_POOL;
 
-    // event BuyEvent(
-    //     address indexed to, // 购买者
-    //     address inviter, // 邀请人
-    //     uint256 ghkValue, // 购买的 GHK 数量
-    //     address tradeToken, // 购买使用的交易代币
-    //     uint256 price, // 当时的金价，单位：USD/g，精度 1e10
-    //     uint256 usdValue, // 购买的等值 USD 数量，等于 ghkValue*price
-    //     uint256 feePercentage // 购买手续费
-    // );
-
     event BindInviter(address indexed to, address inviter);
 
     event TokenBuy(
@@ -319,11 +309,7 @@ contract GHKBuyPool is Initializable, OwnableUpgradeable {
                 usdtAmount
             );
         } else {
-            IERC20(tradeToken).safeTransferFrom(
-                msg.sender,
-                USD_TO_ADDRESS,
-                usdAmount
-            );
+            revert("unsupported tradeToken");
         }
 
         GHK.safeTransfer(msg.sender, amount);
@@ -377,16 +363,6 @@ contract GHKBuyPool is Initializable, OwnableUpgradeable {
 
         // 更新最新的 XAU 出售价格
         latestXAUPrice = offchainXAUPrice;
-
-        // emit BuyEvent(
-        //     msg.sender,
-        //     inviter1,
-        //     amount,
-        //     tradeToken,
-        //     gPrice,
-        //     usdAmount,
-        //     BUY_GHK_FEE_PERCENTAGE
-        // );
     }
 
     function buyTo(
@@ -412,7 +388,7 @@ contract GHKBuyPool is Initializable, OwnableUpgradeable {
         require(gPrice > 0, "Invalid gold price");
 
         uint256 amount = (usdAmount * 1e10) / gPrice;
-        require(amount >= BUY_GHK_AMOUNT_MIN, "amount less than min");
+        // require(amount >= BUY_GHK_AMOUNT_MIN, "amount less than min");
         require(amount <= BUY_GHK_AMOUNT_MAX, "amount more than max");
         require(
             amount <= GHK.balanceOf(address(this)),
@@ -437,14 +413,13 @@ contract GHKBuyPool is Initializable, OwnableUpgradeable {
         // 更新最新的 XAU 出售价格
         latestXAUPrice = offchainXAUPrice;
 
-        // emit BuyEvent(user, address(0), amount, coin, gPrice, usdAmount, 0);
         return true;
     }
 
     //线下购买-只有管理员有权限操作
     function buyOffline(uint256 amount, address to) external onlyOwner {
         require(!_blacklist[to], "Blacklist: to is blacklisted");
-        require(amount >= BUY_GHK_AMOUNT_MIN, "amount less than min");
+        // require(amount >= BUY_GHK_AMOUNT_MIN, "amount less than min");
         require(amount <= BUY_GHK_AMOUNT_MAX, "amount more than max");
         require(
             amount <= GHK.balanceOf(address(this)),
