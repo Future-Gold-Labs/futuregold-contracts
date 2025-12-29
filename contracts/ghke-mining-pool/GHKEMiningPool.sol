@@ -37,6 +37,9 @@ contract GHKEMiningPool is Initializable, OwnableUpgradeable {
     IERC20 public ghkToken; // $GHK 代币
     IERC20 public ghkeToken; // $GHKE 代币
 
+    // 暂停质押
+    bool public stop;
+
     // 事件定义
     event Staked(address indexed user, uint256 amount, uint256 index);
     event RewardClaimed(address indexed user, uint256 reward);
@@ -44,6 +47,8 @@ contract GHKEMiningPool is Initializable, OwnableUpgradeable {
     event RewardRateUpdated(uint256 newRate);
     event MinStakeGhkAmountUpdated(uint256 indexed oldVal, uint256 newVal);
     event LockPeriodUpdated(uint256 indexed oldVal, uint256 newVal);
+
+    event StopStatusChanged(bool indexed stop);
 
     function initialize(
         address _ghkToken,
@@ -74,6 +79,7 @@ contract GHKEMiningPool is Initializable, OwnableUpgradeable {
 
     // 质押功能
     function deposit(uint256 amount) external {
+        require(!stop, "stopped");
         require(
             amount >= MIN_STAKE_GHK_AMOUNT,
             "Stake amount must be greater than 0"
@@ -193,11 +199,17 @@ contract GHKEMiningPool is Initializable, OwnableUpgradeable {
         emit MinStakeGhkAmountUpdated(oldValue, _newVal);
     }
 
-    //锁定周期（90 天）
+    //锁定周期
     function setLockPeriod(uint256 _newVal) external onlyOwner {
         uint256 oldValue = LOCK_PERIOD;
         LOCK_PERIOD = _newVal;
         emit LockPeriodUpdated(oldValue, _newVal);
+    }
+
+    // 暂停
+    function setStop(bool isStop) external onlyOwner {
+        stop = isStop;
+        emit StopStatusChanged(stop);
     }
 
     // 查询用户质押记录总数
