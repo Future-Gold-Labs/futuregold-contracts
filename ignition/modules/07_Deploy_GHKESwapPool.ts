@@ -32,5 +32,9 @@ export default buildModule("GHKESwapPool", (m) => {
   );
   const proxyAdmin = m.contractAt("ProxyAdmin", proxyAdminAddress);
 
+  // ！！！！！！！ 未测试 ！！！！！！！
+  // const tx = m.call(ghkBuyPool, "setGHKESwapPool", [proxy], { from: owner });
+  // console.log("Call GHKBuyPool.setGHKESwapPool(pool) success, tx:", tx);
+
   return { ghkeSwapPool, proxy, proxyAdmin };
 });

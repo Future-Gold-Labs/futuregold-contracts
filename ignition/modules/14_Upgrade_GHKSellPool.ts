@@ -2,7 +2,7 @@ import { buildModule } from "@nomicfoundation/hardhat-ignition/modules";
 
 import GHKSellPool from "./04_Deploy_GHKSellPool.js";
 
-export default buildModule("Upgrade_GHKSellPool_V3", (m) => {
+export default buildModule("Upgrade_GHKSellPool", (m) => {
   const owner = m.getAccount(0);
 
   const { proxy, proxyAdmin } = m.useModule(GHKSellPool);
