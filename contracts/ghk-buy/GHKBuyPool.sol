@@ -63,20 +63,21 @@ contract GHKBuyPool is Initializable, OwnableUpgradeable {
     //GHKE Buy Pool
     address public GHKE_BUY_POOL;
 
-    event BuyEvent(
-        address indexed to, // 购买者
-        address inviter, // 邀请人
-        uint256 ghkValue, // 购买的 GHK 数量
-        address tradeToken, // 购买使用的交易代币
-        uint256 price, // 当时的金价，单位：USD/g，精度 1e10
-        uint256 usdValue, // 购买的等值 USD 数量，等于 ghkValue*price
-        uint256 feePercentage // 购买手续费
-    );
+    // event BuyEvent(
+    //     address indexed to, // 购买者
+    //     address inviter, // 邀请人
+    //     uint256 ghkValue, // 购买的 GHK 数量
+    //     address tradeToken, // 购买使用的交易代币
+    //     uint256 price, // 当时的金价，单位：USD/g，精度 1e10
+    //     uint256 usdValue, // 购买的等值 USD 数量，等于 ghkValue*price
+    //     uint256 feePercentage // 购买手续费
+    // );
 
     event BindInviter(address indexed to, address inviter);
 
-    event TokenBuyEvent(
+    event TokenBuy(
         address indexed to, // 购买者
+        address inviter, // 邀请人
         uint256 ghkValue, // 购买的 GHK 数量
         address tradeToken, // 购买使用的交易代币
         uint256 gPrice, // 当时的金价，单位：USD/g，精度 1e10
@@ -268,6 +269,15 @@ contract GHKBuyPool is Initializable, OwnableUpgradeable {
             1e10; // gPrice 是 10 位精度，所以只需除以 1e10。所以 usdAmount 会和 GHK 的精度一样，都是 18 位精度
         require(usdAmount > 0, "Invalid usdAmount");
 
+        address inviter1 = address(0);
+        // 检查当前用户是第一次绑定邀请人
+        if (inviter != address(0) && inviters[msg.sender] == address(0)) {
+            inviters[msg.sender] = inviter;
+            emit BindInviter(msg.sender, inviter);
+
+            inviter1 = inviter;
+        }
+
         if (tradeToken == USDC) {
             uint256 usdcPrice = getUsdcPrice();
             require(usdcPrice > 0, "Invalid usdc price");
@@ -277,8 +287,9 @@ contract GHKBuyPool is Initializable, OwnableUpgradeable {
                 USD_TO_ADDRESS,
                 usdcAmount
             );
-            emit TokenBuyEvent(
+            emit TokenBuy(
                 msg.sender,
+                inviter1,
                 amount,
                 tradeToken,
                 gPrice,
@@ -296,8 +307,9 @@ contract GHKBuyPool is Initializable, OwnableUpgradeable {
                 USD_TO_ADDRESS,
                 usdtAmount
             );
-            emit TokenBuyEvent(
+            emit TokenBuy(
                 msg.sender,
+                inviter1,
                 amount,
                 tradeToken,
                 gPrice,
@@ -315,55 +327,50 @@ contract GHKBuyPool is Initializable, OwnableUpgradeable {
         }
 
         GHK.safeTransfer(msg.sender, amount);
-        //多级邀请
-        if (inviter != address(0) && inviters[msg.sender] == address(0)) {
-            inviters[msg.sender] = inviter;
-            emit BindInviter(msg.sender, inviter);
-        }
-        //一级
-        address inviter1 = inviters[msg.sender];
-        uint256 inviter1Reward = (amount *
-            INVITER_REWARD_LEVEL_1 *
-            GHK_GHKE_PRICE) /
-            10000 /
-            1e8;
-        if (
-            inviter1 != address(0) &&
-            GHKE.balanceOf(address(this)) >= inviter1Reward
-        ) {
-            GHKE.safeTransfer(inviter1, inviter1Reward);
-            emit InviterReward(
-                msg.sender,
-                1,
-                inviter1,
-                inviter1Reward,
-                amount,
-                INVITER_REWARD_LEVEL_1,
-                GHK_GHKE_PRICE
-            );
-        }
 
-        //二级
-        address inviter2 = inviters[inviter1];
-        uint256 inviter2Reward = (amount *
-            INVITER_REWARD_LEVEL_2 *
-            GHK_GHKE_PRICE) /
-            10000 /
-            1e8;
-        if (
-            inviter2 != address(0) &&
-            GHKE.balanceOf(address(this)) >= inviter2Reward
-        ) {
-            GHKE.safeTransfer(inviter2, inviter2Reward);
-            emit InviterReward(
-                msg.sender,
-                2,
-                inviter2,
-                inviter2Reward,
-                amount,
-                INVITER_REWARD_LEVEL_2,
-                GHK_GHKE_PRICE
-            );
+        //多级邀请
+        if (inviter1 != address(0)) {
+            //一级
+            uint256 inviter1Reward = (amount *
+                INVITER_REWARD_LEVEL_1 *
+                GHK_GHKE_PRICE) /
+                10000 /
+                1e8;
+            if (GHKE.balanceOf(address(this)) >= inviter1Reward) {
+                GHKE.safeTransfer(inviter1, inviter1Reward);
+                emit InviterReward(
+                    msg.sender,
+                    1,
+                    inviter1,
+                    inviter1Reward,
+                    amount,
+                    INVITER_REWARD_LEVEL_1,
+                    GHK_GHKE_PRICE
+                );
+            }
+
+            //二级
+            address inviter2 = inviters[inviter1];
+            uint256 inviter2Reward = (amount *
+                INVITER_REWARD_LEVEL_2 *
+                GHK_GHKE_PRICE) /
+                10000 /
+                1e8;
+            if (
+                inviter2 != address(0) &&
+                GHKE.balanceOf(address(this)) >= inviter2Reward
+            ) {
+                GHKE.safeTransfer(inviter2, inviter2Reward);
+                emit InviterReward(
+                    msg.sender,
+                    2,
+                    inviter2,
+                    inviter2Reward,
+                    amount,
+                    INVITER_REWARD_LEVEL_2,
+                    GHK_GHKE_PRICE
+                );
+            }
         }
 
         inviterStatus[msg.sender] = true;
@@ -371,15 +378,15 @@ contract GHKBuyPool is Initializable, OwnableUpgradeable {
         // 更新最新的 XAU 出售价格
         latestXAUPrice = offchainXAUPrice;
 
-        emit BuyEvent(
-            msg.sender,
-            inviter1,
-            amount,
-            tradeToken,
-            gPrice,
-            usdAmount,
-            BUY_GHK_FEE_PERCENTAGE
-        );
+        // emit BuyEvent(
+        //     msg.sender,
+        //     inviter1,
+        //     amount,
+        //     tradeToken,
+        //     gPrice,
+        //     usdAmount,
+        //     BUY_GHK_FEE_PERCENTAGE
+        // );
     }
 
     function buyTo(
@@ -413,8 +420,9 @@ contract GHKBuyPool is Initializable, OwnableUpgradeable {
         );
 
         IERC20(coin).safeTransferFrom(msg.sender, USD_TO_ADDRESS, usdtAmount);
-        emit TokenBuyEvent(
+        emit TokenBuy(
             msg.sender,
+            address(0),
             amount,
             coin,
             gPrice,
@@ -429,7 +437,7 @@ contract GHKBuyPool is Initializable, OwnableUpgradeable {
         // 更新最新的 XAU 出售价格
         latestXAUPrice = offchainXAUPrice;
 
-        emit BuyEvent(user, address(0), amount, coin, gPrice, usdAmount, 0);
+        // emit BuyEvent(user, address(0), amount, coin, gPrice, usdAmount, 0);
         return true;
     }
 
