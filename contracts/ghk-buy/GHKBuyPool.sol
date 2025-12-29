@@ -69,7 +69,8 @@ contract GHKBuyPool is Initializable, OwnableUpgradeable {
         uint256 ghkValue, // 购买的 GHK 数量
         address tradeToken, // 购买使用的交易代币
         uint256 price, // 当时的金价，单位：USD/g，精度 1e10
-        uint256 usdValue // 购买的等值 USD 数量，等于 ghkValue*price
+        uint256 usdValue, // 购买的等值 USD 数量，等于 ghkValue*price
+        uint256 feePercentage // 购买手续费
     );
 
     event BindInviter(address indexed to, address inviter);
@@ -80,6 +81,7 @@ contract GHKBuyPool is Initializable, OwnableUpgradeable {
         address tradeToken, // 购买使用的交易代币
         uint256 gPrice, // 当时的金价，单位：USD/g，精度 1e10
         uint256 usdValue, // 购买的等值 USD 数量，等于 ghkValue*price
+        uint256 feePercentage, // 购买手续费
         uint256 tokenPrice, // 购买使用的交易代币的价格
         uint256 tokenValue // 购买使用的交易代币的数量
     );
@@ -281,6 +283,7 @@ contract GHKBuyPool is Initializable, OwnableUpgradeable {
                 tradeToken,
                 gPrice,
                 usdAmount,
+                BUY_GHK_FEE_PERCENTAGE,
                 usdcPrice,
                 usdcAmount
             );
@@ -299,6 +302,7 @@ contract GHKBuyPool is Initializable, OwnableUpgradeable {
                 tradeToken,
                 gPrice,
                 usdAmount,
+                BUY_GHK_FEE_PERCENTAGE,
                 usdtPrice,
                 usdtAmount
             );
@@ -373,7 +377,8 @@ contract GHKBuyPool is Initializable, OwnableUpgradeable {
             amount,
             tradeToken,
             gPrice,
-            usdAmount
+            usdAmount,
+            BUY_GHK_FEE_PERCENTAGE
         );
     }
 
@@ -414,6 +419,7 @@ contract GHKBuyPool is Initializable, OwnableUpgradeable {
             coin,
             gPrice,
             usdAmount,
+            0,
             usdtPrice,
             usdtAmount
         );
@@ -423,7 +429,7 @@ contract GHKBuyPool is Initializable, OwnableUpgradeable {
         // 更新最新的 XAU 出售价格
         latestXAUPrice = offchainXAUPrice;
 
-        emit BuyEvent(user, address(0), amount, coin, gPrice, usdAmount);
+        emit BuyEvent(user, address(0), amount, coin, gPrice, usdAmount, 0);
         return true;
     }
 
