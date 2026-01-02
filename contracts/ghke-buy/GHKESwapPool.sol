@@ -125,11 +125,8 @@ contract GHKESwapPool is Initializable, OwnableUpgradeable {
 
         uint256 usdAmount = (amount * GHKE_USDT_PRICE) / 1e18;
 
-        GHKE.safeTransferFrom(
-            msg.sender,
-            0x000000000000000000000000000000000000dEaD,
-            amount
-        );
+         // 销毁 GHKE
+        GHKE.safeTransferFrom(msg.sender, address(0), amount);
 
         USDT.approve(GHK_BUY_POOL_ADDRESS, usdAmount);
         IGHKBuyPool(GHK_BUY_POOL_ADDRESS).buyTo(
