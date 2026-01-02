@@ -25,3 +25,7 @@
 `bunx hardhat ignition deploy ignition/modules/14_Upgrade_GHKSellPool.ts --build-profile default --network bnbTestnet --parameters ignition/parameters.bnb.testnet.json`
 
 `bunx hardhat ignition deploy ignition/modules/15_Upgrade_GHKMiningPool.ts --build-profile default --network bnbTestnet --parameters ignition/parameters.bnb.testnet.json`
+
+`bunx hardhat ignition deploy ignition/modules/16_Upgrade_GHKEMiningPool.ts --build-profile default --network bnbTestnet --parameters ignition/parameters.bnb.testnet.json`
+
+`bunx hardhat ignition deploy ignition/modules/17_Upgrade_GHKESwapPool.ts --build-profile default --network bnbTestnet --parameters ignition/parameters.bnb.testnet.json`

@@ -7,14 +7,14 @@ export default buildModule("GHKEMiningPool", (m) => {
 
   const owner = m.getAccount(0);
 
-  const gkheMiningPool = m.contract("GHKEMiningPool");
+  const ghkeMiningPool = m.contract("GHKEMiningPool");
 
   // constructor(address _logic, address initialOwner, bytes memory _data)
   const proxy = m.contract("TransparentUpgradeableProxy", [
-    gkheMiningPool,
+    ghkeMiningPool,
     owner,
     // function initialize(address _ghkToken, address _ghkeToken) public initializer {}
-    m.encodeFunctionCall(gkheMiningPool, "initialize", [ghkeToken, ghkeToken]),
+    m.encodeFunctionCall(ghkeMiningPool, "initialize", [ghkeToken, ghkeToken]),
   ]);
 
   const proxyAdminAddress = m.readEventArgument(
@@ -24,5 +24,5 @@ export default buildModule("GHKEMiningPool", (m) => {
   );
   const proxyAdmin = m.contractAt("ProxyAdmin", proxyAdminAddress);
 
-  return { gkheMiningPool, proxy, proxyAdmin };
+  return { ghkeMiningPool, proxy, proxyAdmin };
 });
