@@ -1,6 +1,4 @@
-
 `bunx hardhat ignition deploy ignition/modules/Deploy_mock_USDT_USDC.ts --build-profile default --network bnbTestnet`
-
 
 ## 1. 部署
 
@@ -20,12 +18,16 @@
 
 ## 2. 升级
 
+`bunx hardhat ignition deploy ignition/modules/11_Upgrade_GHKToken.ts --build-profile default --network bnbTestnet`
+
+`bunx hardhat ignition deploy ignition/modules/12_Upgrade_GHKEToken.ts --build-profile default --network bnbTestnet`
+
 `bunx hardhat ignition deploy ignition/modules/13_Upgrade_GHKBuyPool.ts --build-profile default --network bnbTestnet --parameters ignition/parameters.bnb.testnet.json`
 
 `bunx hardhat ignition deploy ignition/modules/14_Upgrade_GHKSellPool.ts --build-profile default --network bnbTestnet --parameters ignition/parameters.bnb.testnet.json`
 
-`bunx hardhat ignition deploy ignition/modules/15_Upgrade_GHKMiningPool.ts --build-profile default --network bnbTestnet --parameters ignition/parameters.bnb.testnet.json`
+`bunx hardhat ignition deploy ignition/modules/15_Upgrade_GHKMiningPool.ts --build-profile default --network bnbTestnet`
 
-`bunx hardhat ignition deploy ignition/modules/16_Upgrade_GHKEMiningPool.ts --build-profile default --network bnbTestnet --parameters ignition/parameters.bnb.testnet.json`
+`bunx hardhat ignition deploy ignition/modules/16_Upgrade_GHKEMiningPool.ts --build-profile default --network bnbTestnet`
 
 `bunx hardhat ignition deploy ignition/modules/17_Upgrade_GHKESwapPool.ts --build-profile default --network bnbTestnet --parameters ignition/parameters.bnb.testnet.json`
