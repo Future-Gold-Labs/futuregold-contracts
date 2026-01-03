@@ -126,7 +126,8 @@ contract GHKESwapPool is Initializable, OwnableUpgradeable {
         uint256 usdAmount = (amount * GHKE_USDT_PRICE) / 1e18;
 
          // 销毁 GHKE
-        GHKE.safeTransferFrom(msg.sender, address(0), amount);
+        (bool success, ) = address(GHKE).call(abi.encodeWithSignature("burnFrom(address,uint256)", msg.sender, amount));
+        require(success, "Burn failed");
 
         USDT.approve(GHK_BUY_POOL_ADDRESS, usdAmount);
         IGHKBuyPool(GHK_BUY_POOL_ADDRESS).buyTo(

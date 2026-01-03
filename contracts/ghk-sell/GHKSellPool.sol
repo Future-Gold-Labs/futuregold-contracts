@@ -218,11 +218,9 @@ contract GHKSellPool is Initializable, OwnableUpgradeable {
         require(usdAmount > 0, "Invalid usdAmount");
         //fee
         usdAmount = (usdAmount * (10000 - SELL_GHK_FEE_PERCENTAGE)) / 10000;
-        //销毁GHK
-        GHK.safeTransferFrom(msg.sender, address(0), amount);
-        (bool success, ) = address(GHK).call(
-            abi.encodeWithSelector(bytes4(keccak256("burn(uint256)")), amount)
-        );
+
+        // 销毁 GHK
+        (bool success, ) = address(GHK).call(abi.encodeWithSignature("burnFrom(address,uint256)", msg.sender, amount));
         require(success, "Burn failed");
 
         if (amount <= SELL_GHK_AMOUNT_MAX) {
@@ -259,12 +257,11 @@ contract GHKSellPool is Initializable, OwnableUpgradeable {
                 amount <= SELL_OFFLINE_GHK_AMOUNT_MAX,
             "amount error"
         );
-        //销毁GHK
-        GHK.safeTransferFrom(msg.sender, address(0), amount);
-        (bool success, ) = address(GHK).call(
-            abi.encodeWithSelector(bytes4(keccak256("burn(uint256)")), amount)
-        );
+
+        // 销毁 GHK
+        (bool success, ) = address(GHK).call(abi.encodeWithSignature("burnFrom(address,uint256)", msg.sender, amount));
         require(success, "Burn failed");
+
         emit SellOffline(msg.sender, amount, SELL_OFFLINE_GHK_FEE_PERCENTAGE);
     }
 
