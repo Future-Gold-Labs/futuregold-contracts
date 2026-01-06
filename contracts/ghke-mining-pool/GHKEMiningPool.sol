@@ -42,7 +42,7 @@ contract GHKEMiningPool is Initializable, OwnableUpgradeable {
 
     // 事件定义
     event Staked(address indexed user, uint256 amount, uint256 index);
-    event RewardClaimed(address indexed user, uint256 reward);
+    event RewardClaimed(address indexed user, uint256 reward, uint256 index);
     event Unstaked(address indexed user, uint256 amount, uint256 index);
     event RewardRateUpdated(uint256 newRate);
     event MinStakeGhkAmountUpdated(uint256 indexed oldVal, uint256 newVal);
@@ -132,7 +132,7 @@ contract GHKEMiningPool is Initializable, OwnableUpgradeable {
         // 更新该质押记录的奖励率
         stakes[msg.sender][index].userRewardRate = cumulativeRewardRate;
 
-        emit RewardClaimed(msg.sender, reward);
+        emit RewardClaimed(msg.sender, reward, index);
     }
 
     // 解锁并提取本金
@@ -151,7 +151,7 @@ contract GHKEMiningPool is Initializable, OwnableUpgradeable {
 
             if (reward > 0) {
                 ghkeToken.safeTransfer(msg.sender, reward);
-                emit RewardClaimed(msg.sender, reward);
+                emit RewardClaimed(msg.sender, reward, index);
             }
         }
 
