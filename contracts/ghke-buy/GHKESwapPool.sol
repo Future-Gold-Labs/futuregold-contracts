@@ -12,7 +12,7 @@ interface IGHKBuyPool {
     function buyTo(
         address user,
         address coin,
-        uint256 usdAmount,
+        uint256 usdtAmount,
         uint256 offchainXAUPrice,
         uint256 deadline,
         bytes calldata sig
@@ -38,6 +38,10 @@ contract GHKESwapPool is Initializable, OwnableUpgradeable {
     address public GHK_BUY_POOL_ADDRESS;
     //GHKE->USDT的价格 扩大1e18  1u/GHKE =  1GHKE=1e18 USDT
     uint256 public GHKE_USDT_PRICE;
+    //兑换手续费，扩大10000倍
+    uint256 public SWAP_GHK_FEE_PERCENTAGE;
+    //手续费接收地址
+    address public USD_TO_ADDRESS;
 
     //暂停交易
     bool public stop;
@@ -49,29 +53,36 @@ contract GHKESwapPool is Initializable, OwnableUpgradeable {
         address indexed user, // 购买者
         uint256 amount, // 支付的 GHKE 数量
         uint256 price, // 当时的 GHKE->USDT 价格
-        uint256 usdAmount // GHKE->USDT->GHK 转换过程中使用的 USDT 数量
+        uint256 usdtAmount, // GHKE->USDT->GHK 转换过程中使用的 USDT 数量
+        uint256 feePercentage, // 兑换手续费费率
+        uint256 fee // 兑换手续费数量
     );
     event AddedToBlacklist(address indexed account);
     event RemovedFromBlacklist(address indexed account);
     event SwapGHKEAmountMinUpdated(uint256 indexed oldValue, uint256 newValue);
     event GHKE_USDT_PriceUpdated(uint256 indexed oldValue, uint256 newValue);
+    event SwapGHKFeePercentageUpdated(uint256 indexed oldValue, uint256 newValue);
+    event USDToAddressUpdated(address oldTo, address newTo);
     event StopStatusChanged(bool indexed stop);
 
     event EmergencyWithdraw(address indexed coin, address to, uint256 amount);
 
     function initialize(
+        address _usdToAddress,
         address _GHKE,
         address _USDT,
         address _dataFeedUSDT,
         address _GHK_BUY_POOL_ADDRESS
     ) public initializer {
         __Ownable_init(msg.sender);
+        USD_TO_ADDRESS = _usdToAddress;
         GHKE = IERC20(_GHKE);
         USDT = IERC20(_USDT);
         dataFeedUSDT = AggregatorV3Interface(_dataFeedUSDT);
         GHK_BUY_POOL_ADDRESS = _GHK_BUY_POOL_ADDRESS;
         SWAP_GHKE_AMOUNT_MIN = 100 * 1e18;
         GHKE_USDT_PRICE = 1e17; // 0.1
+        SWAP_GHK_FEE_PERCENTAGE = 25; // 0.25%
 
         OZ_TO_G = 311034768000;
     }
@@ -96,20 +107,24 @@ contract GHKESwapPool is Initializable, OwnableUpgradeable {
         return gPrice;
     }
 
-    function getAmountOut(
+    function getAmountOutAndFee(
         uint256 amountIn,
         uint256 offchainXAUPrice
-    ) public view returns (uint256) {
+    ) external view returns (uint256 ghkAmount, uint256 fee) {
         // 1/2 GHKE->USDT
-        uint256 usdtAmount = (amountIn * GHKE_USDT_PRICE) / 1e18; // 这里取了巧，USDT和USDC都是18位精度，刚好GHK也是18位精度。因为 usdcPrice 是 18 位精度，所以只需除以 1e18
+        uint256 usdtAmount = (amountIn * GHKE_USDT_PRICE) / 1e18; // 这里取了巧，USDT和USDC都是18位精度，刚好GHKE也是18位精度。因为 usdcPrice 是 18 位精度，所以只需除以 1e18
 
         uint256 usdtPrice = getUsdtPrice();
         uint256 usdAmount = (usdtAmount * 1e18) / usdtPrice;
 
         uint256 gPrice = getPrice(offchainXAUPrice);
         // 2/2 USDT->GHK
-        uint256 ghkAmount = (usdAmount * 1e10) / gPrice; // 这里取了巧，USDT和USDC都是18位精度，刚好GHK也是18位精度。因为 usdcPrice 是 18 位精度，所以只需除以 1e18
-        return ghkAmount;
+        ghkAmount = (usdAmount * 1e10) / gPrice; // 这里取了巧，USDT和USDC都是18位精度，刚好GHK也是18位精度。因为 usdcPrice 是 18 位精度，所以只需除以 1e18
+        
+        // 兑换手续费
+        fee = (usdtAmount * SWAP_GHK_FEE_PERCENTAGE) / 10000;
+        
+        return (ghkAmount, fee);
     }
 
     //GHKE->USDT->GHK
@@ -123,22 +138,31 @@ contract GHKESwapPool is Initializable, OwnableUpgradeable {
         require(!_blacklist[msg.sender], "Blacklist: user is blacklisted");
         require(amount >= SWAP_GHKE_AMOUNT_MIN, "amount less than min");
 
-        uint256 usdAmount = (amount * GHKE_USDT_PRICE) / 1e18;
+        // GHKE 价值多少 USDT
+        uint256 usdtAmount = (amount * GHKE_USDT_PRICE) / 1e18;
 
-         // 销毁 GHKE
+        // 用户需要支付的手续费
+        uint256 fee = (usdtAmount * SWAP_GHK_FEE_PERCENTAGE) / 10000;
+
+        // 销毁 GHKE
         (bool success, ) = address(GHKE).call(abi.encodeWithSignature("burnFrom(address,uint256)", msg.sender, amount));
         require(success, "Burn failed");
 
-        USDT.approve(GHK_BUY_POOL_ADDRESS, usdAmount);
+        // 使用 USDT 购买 GHK
+        USDT.approve(GHK_BUY_POOL_ADDRESS, usdtAmount);
         IGHKBuyPool(GHK_BUY_POOL_ADDRESS).buyTo(
             msg.sender,
             address(USDT),
-            usdAmount,
+            usdtAmount,
             offchainXAUPrice,
             deadline,
             sig
         );
-        emit Swap(msg.sender, amount, GHKE_USDT_PRICE, usdAmount);
+
+        // 用户支付手续费
+        IERC20(USDT).safeTransferFrom(msg.sender, USD_TO_ADDRESS, fee);
+
+        emit Swap(msg.sender, amount, GHKE_USDT_PRICE, usdtAmount, SWAP_GHK_FEE_PERCENTAGE, fee);
     }
 
     function addToBlacklist(address account) external onlyOwner {
@@ -183,6 +207,27 @@ contract GHKESwapPool is Initializable, OwnableUpgradeable {
         uint256 oldValue = GHKE_USDT_PRICE;
         GHKE_USDT_PRICE = newPrice;
         emit GHKE_USDT_PriceUpdated(oldValue, newPrice);
+    }
+
+    // 修改兑换手续费
+    function setSwapGHKFeePercentage(
+        uint256 _newFeePercentage
+    ) external onlyOwner {
+        require(
+            _newFeePercentage <= 10000,
+            "Fee percentage cannot exceed 100%"
+        );
+        uint256 oldValue = SWAP_GHK_FEE_PERCENTAGE;
+        SWAP_GHK_FEE_PERCENTAGE = _newFeePercentage;
+        emit SwapGHKFeePercentageUpdated(oldValue, _newFeePercentage);
+    }
+
+    // 修改手续费接收地址
+    function setUsdToAddress(address _usdToAddress) external onlyOwner {
+        require(_usdToAddress != address(0), "Invalid address");
+        address oldTo = USD_TO_ADDRESS;
+        USD_TO_ADDRESS = _usdToAddress;
+        emit USDToAddressUpdated(oldTo, _usdToAddress);
     }
 
     //暂停

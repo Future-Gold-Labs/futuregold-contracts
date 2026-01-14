@@ -15,9 +15,10 @@ export default buildModule("GHKESwapPool", (m) => {
   const proxy = m.contract("TransparentUpgradeableProxy", [
     ghkeSwapPool,
     owner,
-    // function initialize(address _GHKE, address _USDT, address _dataFeedUSDT,
+    // function initialize(address _usdToAddress, address _GHKE, address _USDT, address _dataFeedUSDT,
     //  address _GHK_BUY_POOL_ADDRESS) public initializer {}
     m.encodeFunctionCall(ghkeSwapPool, "initialize", [
+      m.getParameter("USD_TO_ADDRESS"),
       ghkeToken,
       m.getParameter("USDT"),
       m.getParameter("DATA_FEED_USDT"),
