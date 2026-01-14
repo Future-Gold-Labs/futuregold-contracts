@@ -72,7 +72,7 @@ contract GHKBuyPool is Initializable, OwnableUpgradeable {
         address tradeToken, // 购买使用的交易代币
         uint256 gPrice, // 当时的金价，单位：USD/g，精度 1e10
         uint256 usdValue, // 购买的等值 USD 数量，等于 ghkValue*price
-        uint256 feePercentage, // 购买手续费
+        uint256 feePercentage, // 购买手续费费率
         uint256 tokenPrice, // 购买使用的交易代币的价格
         uint256 tokenValue // 购买使用的交易代币的数量
     );

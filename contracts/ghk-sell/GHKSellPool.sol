@@ -58,7 +58,7 @@ contract GHKSellPool is Initializable, OwnableUpgradeable {
         address tradeToken, // 赎回目标代币，USDT
         uint256 price, // 当时的金价，单位 USDT/g，精度 1e10
         uint256 usdValue, // 赎回得到的 USDT 数量
-        uint256 feePercentage // 线上赎回手续费，精度 1e4
+        uint256 feePercentage // 线上赎回手续费费率，精度 1e4
     );
     event SellByAdmin(
         address indexed from, // 赎回用户
@@ -66,12 +66,12 @@ contract GHKSellPool is Initializable, OwnableUpgradeable {
         address tradeToken, // 赎回目标代币，USDT
         uint256 price, // 当时的金价，单位 USDT/g，精度 1e10
         uint256 usdValue, // 赎回得到的 USDT 数量
-        uint256 feePercentage // 线上赎回手续费，精度 1e4
+        uint256 feePercentage // 线上赎回手续费费率，精度 1e4
     );
     event SellOffline(
         address indexed from, // 赎回用户
         uint256 ghkValue, // 赎回的 GHK 数量
-        uint256 feePercentage // 实物黄金赎回手续费，精度 1e4
+        uint256 feePercentage // 实物黄金赎回手续费费率，精度 1e4
     );
 
     event AddedToBlacklist(address indexed account);
