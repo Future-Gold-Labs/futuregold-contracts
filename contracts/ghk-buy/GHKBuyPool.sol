@@ -376,7 +376,7 @@ contract GHKBuyPool is Initializable, OwnableUpgradeable {
         require(msg.sender == GHKE_BUY_POOL, "permission denied");
         require(!_blacklist[user], "Blacklist: user is blacklisted");
         uint256 usdtPrice = getUsdtPrice();
-        uint256 usdAmount = (usdtAmount * 1e18) / usdtPrice;
+        uint256 usdAmount = (usdtAmount * usdtPrice) / 1e18;
 
         // 验证签名
         require(
