@@ -139,7 +139,7 @@ contract GHKSellPool is Initializable, OwnableUpgradeable {
         require(block.timestamp < deadline, "Signature expired");
 
         bytes32 messageHash = keccak256(
-            abi.encodePacked(offchainXAUPrice, deadline, user_wallet)
+            abi.encodePacked(offchainXAUPrice, deadline, address(this), user_wallet, block.chainid)
         );
         bytes32 ethSignedMessageHash = MessageHashUtils.toEthSignedMessageHash(
             messageHash
