@@ -152,8 +152,8 @@ contract GHKSellPool is Initializable, OwnableUpgradeable {
     function _checkOffchainXAUPrice(uint256 offchainXAUPrice) internal view {
         (, int256 price, , , ) = dataFeedXAU.latestRoundData();
         // 在 bnb testnet 链上从 oracle 查询到的 XAU 价格精度是 18 位，但在 bnb mainnet 链上只有 8 位
-        uint256 oracleXAUPrice = uint256(price); // bnb testnet
-        // uint256 oracleXAUPrice = uint256(price * 1e10); // bnb mainnet
+        // uint256 oracleXAUPrice = uint256(price); // bnb testnet
+        uint256 oracleXAUPrice = uint256(price * 1e10); // bnb mainnet
 
         // 验证链下价格的可靠性
         // 1. 链下价格不能偏离预言机价格超过 'maxOraclePriceDeviation/10000'
