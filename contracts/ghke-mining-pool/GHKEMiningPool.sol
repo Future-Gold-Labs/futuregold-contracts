@@ -34,7 +34,6 @@ contract GHKEMiningPool is Initializable, OwnableUpgradeable {
     // 锁定周期
     uint256 public LOCK_PERIOD;
     // 代币合约地址
-    IERC20 public ghkToken; // $GHK 代币
     IERC20 public ghkeToken; // $GHKE 代币
 
     // 暂停质押
@@ -50,12 +49,8 @@ contract GHKEMiningPool is Initializable, OwnableUpgradeable {
 
     event StopStatusChanged(bool indexed stop);
 
-    function initialize(
-        address _ghkToken,
-        address _ghkeToken
-    ) public initializer {
+    function initialize(address _ghkeToken) public initializer {
         __Ownable_init(msg.sender);
-        ghkToken = IERC20(_ghkToken);
         ghkeToken = IERC20(_ghkeToken);
         currentRewardPerDay = 1e15; // 0.001
         lastUpdateTime = block.timestamp;
@@ -92,8 +87,8 @@ contract GHKEMiningPool is Initializable, OwnableUpgradeable {
         // 更新累积奖励率
         updateCumulativeRewardRate();
 
-        // 转移 $GHK 代币
-        ghkToken.safeTransferFrom(msg.sender, address(this), amount);
+        // 转移 $GHKE 代币
+        ghkeToken.safeTransferFrom(msg.sender, address(this), amount);
 
         // 添加质押记录
         stakes[msg.sender].push(
@@ -158,7 +153,7 @@ contract GHKEMiningPool is Initializable, OwnableUpgradeable {
         // 提取本金
         uint256 amount = stakeRecord.amount;
         stakes[msg.sender][index].amount = 0;
-        ghkToken.safeTransfer(msg.sender, amount);
+        ghkeToken.safeTransfer(msg.sender, amount);
 
         emit Unstaked(msg.sender, amount, index);
     }
