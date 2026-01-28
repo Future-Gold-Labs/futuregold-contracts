@@ -3,6 +3,7 @@ pragma solidity 0.8.30;
 
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/NoncesUpgradeable.sol";
 import "@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -11,7 +12,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
 
-contract GHKBuyPool is Initializable, OwnableUpgradeable {
+contract GHKBuyPool is Initializable, NoncesUpgradeable, OwnableUpgradeable {
     using SafeERC20 for IERC20;
 
     //chainlink预言机
@@ -115,6 +116,7 @@ contract GHKBuyPool is Initializable, OwnableUpgradeable {
         uint256 _initialXAUPrice,
         address _signer
     ) public initializer {
+        __Nonces_init();
         __Ownable_init(msg.sender);
         GHK = IERC20(_GHK);
         GHKE = IERC20(_GHKE);
@@ -145,6 +147,7 @@ contract GHKBuyPool is Initializable, OwnableUpgradeable {
 
     function _verifySignature(
         address user_wallet,
+        uint256 user_nonce,
         uint256 offchainXAUPrice,
         uint256 deadline,
         bytes calldata sig
@@ -152,7 +155,14 @@ contract GHKBuyPool is Initializable, OwnableUpgradeable {
         require(block.timestamp < deadline, "Signature expired");
 
         bytes32 messageHash = keccak256(
-            abi.encodePacked(offchainXAUPrice, deadline, address(this), user_wallet, block.chainid)
+            abi.encodePacked(
+                offchainXAUPrice,
+                deadline,
+                address(this),
+                user_wallet,
+                user_nonce,
+                block.chainid
+            )
         );
         bytes32 ethSignedMessageHash = MessageHashUtils.toEthSignedMessageHash(
             messageHash
@@ -244,8 +254,15 @@ contract GHKBuyPool is Initializable, OwnableUpgradeable {
         require(tradeTokens[tradeToken], "Invalid tradeToken");
 
         // 验证签名
+        uint256 nonce = _useNonce(msg.sender);
         require(
-            _verifySignature(msg.sender, offchainXAUPrice, deadline, sig),
+            _verifySignature(
+                msg.sender,
+                nonce,
+                offchainXAUPrice,
+                deadline,
+                sig
+            ),
             "Invalid signature"
         );
         // 获取 XAU 价格
@@ -379,8 +396,9 @@ contract GHKBuyPool is Initializable, OwnableUpgradeable {
         uint256 usdAmount = (usdtAmount * usdtPrice) / 1e18;
 
         // 验证签名
+        uint256 nonce = _useNonce(user);
         require(
-            _verifySignature(user, offchainXAUPrice, deadline, sig),
+            _verifySignature(user, nonce, offchainXAUPrice, deadline, sig),
             "Invalid signature"
         );
         // 获取 XAU 价格
