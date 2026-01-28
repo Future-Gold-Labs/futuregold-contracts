@@ -115,7 +115,7 @@ contract GHKESwapPool is Initializable, OwnableUpgradeable {
         uint256 usdtAmount = (amountIn * GHKE_USDT_PRICE) / 1e18; // 这里取了巧，USDT和USDC都是18位精度，刚好GHKE也是18位精度。因为 usdcPrice 是 18 位精度，所以只需除以 1e18
 
         uint256 usdtPrice = getUsdtPrice();
-        uint256 usdAmount = (usdtAmount * 1e18) / usdtPrice;
+        uint256 usdAmount = (usdtAmount * usdtPrice) / 1e18;
 
         uint256 gPrice = getPrice(offchainXAUPrice);
         // 2/2 USDT->GHK
