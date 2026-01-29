@@ -103,6 +103,11 @@ contract GHKBuyPool is Initializable, NoncesUpgradeable, OwnableUpgradeable {
     event GHK_GHKE_PriceUpdated(uint256 newPrice);
     event InviterRewardLevel1Updated(uint256 rate);
     event InviterRewardLevel2Updated(uint256 rate);
+    event GHKE_BUY_PoolUpdated(address oldPool, address newPool);
+    event LatestXAUPriceUpdated(uint256 newPrice);
+    event MaxOraclePriceDeviationUpdated(uint256 oldVal, uint256 newVal);
+    event MaxLatestPriceDeviationUpdated(uint256 oldVal, uint256 newVal);
+    event SignerUpdated(address oldSigner, address newSigner);
 
     function initialize(
         address _usdToAddress,
@@ -573,27 +578,36 @@ contract GHKBuyPool is Initializable, NoncesUpgradeable, OwnableUpgradeable {
 
     //设置GHKE的购买池子地址，只有该池子能执行buyTo
     function setGHKE_BUY_POOL(address pool) external onlyOwner {
+        address oldPool = GHKE_BUY_POOL;
         GHKE_BUY_POOL = pool;
+        emit GHKE_BUY_PoolUpdated(oldPool, pool);
     }
 
     // 设置最新的 XAU 出售价格，精度为 18 位
     function setLatestXAUPrice(uint256 price) external onlyOwner {
         latestXAUPrice = price;
+        emit LatestXAUPriceUpdated(price);
     }
 
     // 设置链下价格和预言机价格的最大偏差比例，精度为 4 位，例如：1% = 100/10000; 0.8% = 80/10000
     function setMaxOraclePriceDeviation(uint256 deviation) external onlyOwner {
+        uint256 oldVal = maxOraclePriceDeviation;
         maxOraclePriceDeviation = deviation;
+        emit MaxOraclePriceDeviationUpdated(oldVal, deviation);
     }
 
     // 链下价格和最新 XAU 出售价格的最大偏差比例，精度为 4 位，例如：10% = 1000/10000; 5% = 200/10000
     function setMaxLatestPriceDeviation(uint256 deviation) external onlyOwner {
+        uint256 oldVal = maxLatestPriceDeviation;
         maxLatestPriceDeviation = deviation;
+        emit MaxLatestPriceDeviationUpdated(oldVal, deviation);
     }
 
     // 设置签名地址
     function setSigner(address _signer) external onlyOwner {
+        address oldSigner = signer;
         signer = _signer;
+        emit SignerUpdated(oldSigner, _signer);
     }
 
     // 紧急提取
