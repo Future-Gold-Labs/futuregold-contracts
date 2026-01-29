@@ -158,6 +158,20 @@ contract GHKEMiningPool is Initializable, OwnableUpgradeable {
         emit Unstaked(msg.sender, amount, index);
     }
 
+    // 紧急提取，只能提取本金
+    function emergencyWithdraw(uint256 index) external {
+        require(index < stakes[msg.sender].length, "Invalid stake index");
+        Stake memory stakeRecord = stakes[msg.sender][index];
+        require(stakeRecord.amount > 0, "Stake already withdrawn");
+
+        // 提取本金
+        uint256 amount = stakeRecord.amount;
+        stakes[msg.sender][index].amount = 0;
+        ghkeToken.safeTransfer(msg.sender, amount);
+
+        emit Unstaked(msg.sender, amount, index);
+    }
+
     // 计算单个质押记录的奖励
     function calculateReward(
         address user,
