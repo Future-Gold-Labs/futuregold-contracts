@@ -26,8 +26,6 @@ contract GHKMiningPool is Initializable, OwnableUpgradeable {
     uint256 public lastUpdateTime;
     // 当前每日奖励率
     uint256 public currentRewardPerDay;
-    // 最大质押记录数
-    uint256 public MAX_STAKES;
     //最小质押GHK数量，以 代币精度位
     uint256 public MIN_STAKE_GHK_AMOUNT;
 
@@ -59,8 +57,6 @@ contract GHKMiningPool is Initializable, OwnableUpgradeable {
         ghkeToken = IERC20(_ghkeToken);
         currentRewardPerDay = 1e17; // 0.1
         lastUpdateTime = block.timestamp;
-        // 最大质押记录数
-        MAX_STAKES = 1000;
         // 锁定周期
         LOCK_PERIOD = 90 days;
         MIN_STAKE_GHK_AMOUNT = 1e18; // 1
@@ -83,10 +79,6 @@ contract GHKMiningPool is Initializable, OwnableUpgradeable {
         require(
             amount >= MIN_STAKE_GHK_AMOUNT,
             "Stake amount must be greater than 0"
-        );
-        require(
-            stakes[msg.sender].length < MAX_STAKES,
-            "Too many stake records"
         );
 
         // 更新累积奖励率
