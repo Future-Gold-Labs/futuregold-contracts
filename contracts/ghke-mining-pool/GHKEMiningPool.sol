@@ -20,7 +20,7 @@ contract GHKEMiningPool is Initializable, OwnableUpgradeable {
 
     // 用户的质押记录列表
     mapping(address => Stake[]) public stakes;
-    // 全局累积奖励率
+    // 全局累积奖励率，扩大 1e18
     uint256 public cumulativeRewardRate;
     // 上次更新时间
     uint256 public lastUpdateTime;
@@ -62,8 +62,8 @@ contract GHKEMiningPool is Initializable, OwnableUpgradeable {
         uint256 timeElapsed = block.timestamp - lastUpdateTime;
         if (timeElapsed > 0 && currentRewardPerDay > 0) {
             cumulativeRewardRate +=
-                (timeElapsed * currentRewardPerDay) /
-                1 days;
+                (timeElapsed * currentRewardPerDay * 1e18) /
+                1 days; // 乘以 1e18 以确保 cumulativeRewardRate 至少有 18 位精度，避免因精度不足导致数据不正确
             lastUpdateTime = block.timestamp;
         }
     }
@@ -110,7 +110,9 @@ contract GHKEMiningPool is Initializable, OwnableUpgradeable {
 
         // 计算单个记录的奖励
         uint256 reward = (stakeRecord.amount *
-            (cumulativeRewardRate - stakeRecord.userRewardRate)) / 1e18;
+            (cumulativeRewardRate - stakeRecord.userRewardRate)) /
+            1e18 /
+            1e18;
         require(reward > 0, "No reward to claim");
 
         // 转移 $GHKE 代币
@@ -134,7 +136,9 @@ contract GHKEMiningPool is Initializable, OwnableUpgradeable {
         if (block.timestamp >= stakeRecord.unlockTime) {
             // 计算奖励
             uint256 reward = (stakeRecord.amount *
-                (cumulativeRewardRate - stakeRecord.userRewardRate)) / 1e18;
+                (cumulativeRewardRate - stakeRecord.userRewardRate)) /
+                1e18 /
+                1e18;
 
             if (reward > 0) {
                 ghkeToken.safeTransfer(msg.sender, reward);
@@ -177,12 +181,14 @@ contract GHKEMiningPool is Initializable, OwnableUpgradeable {
         uint256 timeElapsed = block.timestamp - lastUpdateTime;
         if (timeElapsed > 0 && currentRewardPerDay > 0) {
             tempCumulativeRewardRate +=
-                (timeElapsed * currentRewardPerDay) /
+                (timeElapsed * currentRewardPerDay * 1e18) /
                 1 days;
         }
 
         uint256 reward = (stakeRecord.amount *
-            (tempCumulativeRewardRate - stakeRecord.userRewardRate)) / 1e18;
+            (tempCumulativeRewardRate - stakeRecord.userRewardRate)) /
+            1e18 /
+            1e18;
         return reward;
     }
 
@@ -248,7 +254,7 @@ contract GHKEMiningPool is Initializable, OwnableUpgradeable {
         uint256 timeElapsed = block.timestamp - lastUpdateTime;
         if (timeElapsed > 0 && currentRewardPerDay > 0) {
             tempCumulativeRewardRate +=
-                (timeElapsed * currentRewardPerDay) /
+                (timeElapsed * currentRewardPerDay * 1e18) /
                 1 days;
         }
 
@@ -262,6 +268,7 @@ contract GHKEMiningPool is Initializable, OwnableUpgradeable {
                 (stakes[user][stakeIndex].amount *
                     (tempCumulativeRewardRate -
                         stakes[user][stakeIndex].userRewardRate)) /
+                1e18 /
                 1e18;
         }
 
