@@ -44,8 +44,8 @@ contract GHKEMiningPool is Initializable, OwnableUpgradeable {
     event RewardRateUpdated(uint256 newRate);
     event MinStakeGhkAmountUpdated(uint256 indexed oldVal, uint256 newVal);
     event LockPeriodUpdated(uint256 indexed oldVal, uint256 newVal);
-
     event StopStatusChanged(bool indexed stop);
+    event EmergencyWithdraw(address indexed coin, address to, uint256 amount);
 
     function initialize(address _ghkeToken) public initializer {
         __Ownable_init(msg.sender);
@@ -217,6 +217,20 @@ contract GHKEMiningPool is Initializable, OwnableUpgradeable {
     function setStop(bool isStop) external onlyOwner {
         stop = isStop;
         emit StopStatusChanged(stop);
+    }
+
+    // 紧急提取
+    function emergencyWithdraw(
+        address coin,
+        address to,
+        uint256 amount
+    ) external onlyOwner {
+        require(
+            IERC20(coin).balanceOf(address(this)) >= amount,
+            "amount error"
+        );
+        IERC20(coin).safeTransfer(to, amount);
+        emit EmergencyWithdraw(coin, to, amount);
     }
 
     // 查询用户质押记录总数

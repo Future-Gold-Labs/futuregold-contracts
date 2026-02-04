@@ -97,6 +97,7 @@ contract GHKSellPool is Initializable, NoncesUpgradeable, OwnableUpgradeable {
     event MaxOraclePriceDeviationUpdated(uint256 oldVal, uint256 newVal);
     event MaxLatestPriceDeviationUpdated(uint256 oldVal, uint256 newVal);
     event SignerUpdated(address oldSigner, address newSigner);
+    event EmergencyWithdraw(address indexed coin, address to, uint256 amount);
 
     function initialize(
         address _GHK,
@@ -412,5 +413,19 @@ contract GHKSellPool is Initializable, NoncesUpgradeable, OwnableUpgradeable {
         address oldSigner = signer;
         signer = _signer;
         emit SignerUpdated(oldSigner, _signer);
+    }
+
+    // 紧急提取
+    function emergencyWithdraw(
+        address coin,
+        address to,
+        uint256 amount
+    ) external onlyOwner {
+        require(
+            IERC20(coin).balanceOf(address(this)) >= amount,
+            "amount error"
+        );
+        IERC20(coin).safeTransfer(to, amount);
+        emit EmergencyWithdraw(coin, to, amount);
     }
 }
