@@ -13,8 +13,8 @@ export default buildModule("GHKEMiningPool", (m) => {
   const proxy = m.contract("TransparentUpgradeableProxy", [
     ghkeMiningPool,
     owner,
-    // function initialize(address _ghkToken, address _ghkeToken) public initializer {}
-    m.encodeFunctionCall(ghkeMiningPool, "initialize", [ghkeToken, ghkeToken]),
+    // function initialize(address _ghkeToken) public initializer {}
+    m.encodeFunctionCall(ghkeMiningPool, "initialize", [ghkeToken]),
   ]);
 
   const proxyAdminAddress = m.readEventArgument(

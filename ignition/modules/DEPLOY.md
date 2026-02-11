@@ -1,6 +1,8 @@
+# 1. 测试网
+
 `bunx hardhat ignition deploy ignition/modules/Deploy_mock_USDT_USDC.ts --build-profile default --network bnbTestnet`
 
-## 1. 部署
+## 1.1 部署
 
 `bunx hardhat ignition deploy ignition/modules/01_Deploy_GHKToken.ts --build-profile default --network bnbTestnet`
 
@@ -16,7 +18,7 @@
 
 `bunx hardhat ignition deploy ignition/modules/07_Deploy_GHKESwapPool.ts --build-profile default --network bnbTestnet --parameters ignition/parameters.bnb.testnet.json`
 
-## 2. 升级
+## 1.2 升级
 
 `bunx hardhat ignition deploy ignition/modules/11_Upgrade_GHKToken.ts --build-profile default --network bnbTestnet`
 
@@ -31,3 +33,39 @@
 `bunx hardhat ignition deploy ignition/modules/16_Upgrade_GHKEMiningPool.ts --build-profile default --network bnbTestnet`
 
 `bunx hardhat ignition deploy ignition/modules/17_Upgrade_GHKESwapPool.ts --build-profile default --network bnbTestnet --parameters ignition/parameters.bnb.testnet.json`
+
+---
+
+# 2. 主网
+
+## 2.1 部署
+
+`bunx hardhat ignition deploy ignition/modules/01_Deploy_GHKToken.ts --build-profile default --network bnb --verify`
+
+`bunx hardhat ignition deploy ignition/modules/02_Deploy_GHKEToken.ts --build-profile default --network bnb --verify`
+
+`bunx hardhat ignition deploy ignition/modules/03_Deploy_GHKBuyPool.ts --build-profile default --network bnb --verify --parameters ignition/parameters.bnb.mainnet.json`
+
+`bunx hardhat ignition deploy ignition/modules/04_Deploy_GHKSellPool.ts --build-profile default --network bnb --verify --parameters ignition/parameters.bnb.mainnet.json`
+
+`bunx hardhat ignition deploy ignition/modules/05_Deploy_GHKMiningPool.ts --build-profile default --network bnb --verify`
+
+`bunx hardhat ignition deploy ignition/modules/06_Deploy_GHKEMiningPool.ts --build-profile default --network bnb --verify`
+
+`bunx hardhat ignition deploy ignition/modules/07_Deploy_GHKESwapPool.ts --build-profile default --network bnb --verify --parameters ignition/parameters.bnb.mainnet.json`
+
+## 2.2 升级
+
+`bunx hardhat ignition deploy ignition/modules/11_Upgrade_GHKToken.ts --build-profile default --network bnb --verify`
+
+`bunx hardhat ignition deploy ignition/modules/12_Upgrade_GHKEToken.ts --build-profile default --network bnb --verify`
+
+`bunx hardhat ignition deploy ignition/modules/13_Upgrade_GHKBuyPool.ts --build-profile default --network bnb --verify --parameters ignition/parameters.bnb.mainnet.json`
+
+`bunx hardhat ignition deploy ignition/modules/14_Upgrade_GHKSellPool.ts --build-profile default --network bnb --verify --parameters ignition/parameters.bnb.mainnet.json`
+
+`bunx hardhat ignition deploy ignition/modules/15_Upgrade_GHKMiningPool.ts --build-profile default --network bnb --verify`
+
+`bunx hardhat ignition deploy ignition/modules/16_Upgrade_GHKEMiningPool.ts --build-profile default --network bnb --verify`
+
+`bunx hardhat ignition deploy ignition/modules/17_Upgrade_GHKESwapPool.ts --build-profile default --network bnb --verify --parameters ignition/parameters.bnb.mainnet.json`

@@ -45,6 +45,12 @@ export default defineConfig({
       reownAccounts: true,
       // accounts: ["0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"],
     },
+    bnb: {
+      type: "http",
+      chainType: "l1",
+      url: "https://go.getblock.asia/8d79e88e815c4a43b4d3fd168c9ebd9d",
+      reownAccounts: true,
+    },
   },
   verify: {
     etherscan: {
